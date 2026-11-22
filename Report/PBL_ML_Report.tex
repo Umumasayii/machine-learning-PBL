@@ -159,7 +159,7 @@ force (mainly full-time students) are not part of this task.
 
 \subsection{Research gap and objectives}
 The author's research-methodology proposal studies the factors \emph{associated} with labour-force
-status using survey-weighted statistics. Existing Rwandan studies \cite{ndagijimana,afdb} relied on
+status using descriptive statistics and regression. Existing Rwandan studies \cite{ndagijimana,afdb} relied on
 older survey designs and classical regression. There is little evidence on how well modern
 machine-learning methods can \emph{predict} individual unemployment risk with the redesigned LFS, or
 on which method works best. This project fills that gap with a predictive approach.
@@ -245,19 +245,21 @@ Lighting source & Categorical (4) & Grid electricity, solar/mini-grid, torch/pho
 \end{tabularx}
 \end{table}
 
-With survey weights $w_i$, the youth unemployment rate of a group $G$ is
+All descriptive results are computed directly from the survey sample. For a group $G$ containing
+$n_G$ youth in the labour force, the youth unemployment rate is the share who are unemployed,
 \begin{equation}
-\widehat{\mathrm{UR}}_G = 100\times\frac{\sum_{i\in G} w_i\, Y_i}{\sum_{i\in G} w_i}.
+\mathrm{UR}_G = 100\times\frac{1}{n_G}\sum_{i\in G} Y_i
+             = 100\times\frac{\text{number of unemployed youth in } G}{\text{number of youth in the labour force in } G}.
 \label{eq:ur}
 \end{equation}
-Table~\ref{tab:rates} reports \eqref{eq:ur} for the main groups. The overall rate is \textbf{14.7\%},
-representing about 330{,}000 of the 2.25~million young people in the labour force. Women (17.4\%) are
+Table~\ref{tab:rates} reports \eqref{eq:ur} for the main groups. The overall rate is \textbf{14.7\%}:
+2{,}353 of the 15{,}958 youth in the labour force are unemployed. Women (17.4\%) are
 more affected than men (12.3\%), and youth with upper secondary education have the highest rate
 (22.5\%).
 
 \begin{table}[H]
 \centering
-\caption{Youth unemployment rate by group (LFS 2025, survey-weighted)}
+\caption{Youth unemployment rate by group (LFS 2025 sample)}
 \label{tab:rates}
 \rowcolors{2}{lightrow}{white}
 \begin{tabularx}{\textwidth}{@{}Y r r@{}}
@@ -266,11 +268,11 @@ more affected than men (12.3\%), and youth with upper secondary education have t
 \midrule
 All youth in the labour force & 15{,}958 & 14.7\% \\
 Male / Female & 8{,}304 / 7{,}654 & 12.3\% / 17.4\% \\
-Urban / Rural & 6{,}101 / 9{,}857 & 14.1\% / 15.1\% \\
-Age 16--19 / 20--24 / 25--30 & 3{,}587 / 5{,}970 / 6{,}401 & 15.3\% / 16.1\% / 13.1\% \\
-No education / Primary & 5{,}657 / 5{,}586 & 12.8\% / 12.7\% \\
-Lower secondary / Upper secondary & 1{,}831 / 2{,}322 & 15.7\% / 22.5\% \\
-University & 562 & 17.1\% \\
+Urban / Rural & 6{,}101 / 9{,}857 & 14.2\% / 15.1\% \\
+Age 16--19 / 20--24 / 25--30 & 3{,}587 / 5{,}970 / 6{,}401 & 15.5\% / 16.1\% / 13.1\% \\
+No education / Primary & 5{,}657 / 5{,}586 & 12.8\% / 13.0\% \\
+Lower secondary / Upper secondary & 1{,}831 / 2{,}322 & 15.5\% / 22.5\% \\
+University & 562 & 17.8\% \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -373,7 +375,7 @@ education up to upper secondary level and is higher for women at every education
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.82\textwidth]{report_rate_education_sex.png}
-\caption{Youth unemployment rate by education level and sex (survey-weighted).}
+\caption{Youth unemployment rate by education level and sex.}
 \label{fig:edusex}
 \end{figure}
 
@@ -673,7 +675,7 @@ Rural & 2{,}992 & 15.5\% & 0.636 & 0.609 & 0.592 \\
 
 \subsection{Key findings and interpretation}
 \begin{enumerate}
-\item \textbf{Youth unemployment is concentrated in specific groups.} The weighted rate is 14.7\%, but
+\item \textbf{Youth unemployment is concentrated in specific groups.} The overall rate is 14.7\%, but
       it reaches 17.4\% for young women and 22.5\% for youth with upper secondary education.
 \item \textbf{The education paradox.} Both the descriptive rates and the random forest show that risk
       rises after about ten years of schooling. Educated youth often wait for jobs that match their
@@ -703,8 +705,9 @@ rather than to make decisions about individuals.
       as at risk are actually employed.
 \item \textbf{Associations, not causes.} The data are cross-sectional; the results show which
       characteristics predict unemployment, not what causes it.
-\item \textbf{Survey design not used in training.} Models were trained without survey weights,
-      strata or clusters; descriptive rates are weighted, but model performance describes the sample.
+\item \textbf{Sample-based figures.} All rates and counts are computed directly from the 15{,}958
+      sampled youth (counts and simple proportions), so they describe the sample and may differ
+      slightly from official NISR estimates.
 \item \textbf{Rotating panel.} The same household can appear in several quarters, so related records
       may fall in both training and test sets, which may make test results slightly optimistic.
 \item \textbf{Importance measure.} Random-forest impurity importance favours variables with many
@@ -719,7 +722,6 @@ rather than to make decisions about individuals.
 \begin{itemize}
 \item Split the data by household (grouped cross-validation) so that related records never appear in
       both training and test sets.
-\item Train with survey weights and report design-based uncertainty.
 \item Choose the cut-off from the relative cost of missing an unemployed youth versus a false alarm,
       possibly with group-specific cut-offs to reduce the gender gap.
 \item Add more informative variables (job-search behaviour, previous work experience, household income,
@@ -733,13 +735,17 @@ rather than to make decisions about individuals.
 \section{Bonus Task: Web Application}
 An interactive dashboard, \textbf{Rwanda Youth Employment (LFS 2025)}, was developed in R with
 \texttt{Shiny}, \texttt{bslib} and \texttt{plotly} (Figure~\ref{fig:app}). It runs locally from the
-project folder (\texttt{App/app.R}). Its main features are:
+project folder (\texttt{App/app.R}) and is published online on Posit Connect Cloud from the project's
+GitHub repository. Its main features are:
 \begin{itemize}
 \item \textbf{Ten pages}: executive summary, who is unemployed, education and skills, geography,
       unemployed youth, employed youth, household and time use, model and predictions, data explorer,
       and help/glossary.
-\item \textbf{Filters} by sex, residence, province, education and age, with survey weights that can be
-      switched on or off; all charts, KPI cards and summary tables update immediately.
+\item \textbf{Filters} by sex, residence, province, education and age; all charts, KPI cards, summary
+      tables and the live snapshot card in the sidebar update immediately.
+\item \textbf{Machine-learning shortcuts} in the top bar show the best model and its ROC AUC and jump
+      directly to the model comparison, ROC curves, cut-off explorer, variable importance or risk
+      calculator.
 \item \textbf{Model page}: comparison table of the ten models, ROC and cross-validation charts, a
       cut-off slider that updates the confusion matrix and metrics, and the feature-importance chart.
 \item \textbf{Risk calculator}: the user describes a young person and the random forest returns a risk

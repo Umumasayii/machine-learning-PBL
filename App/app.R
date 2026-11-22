@@ -157,7 +157,6 @@ side_panel <- sidebar(
       picker("f_prov", "Province", "province"),
       picker("f_edu", "Education level", "education_level"),
       sliderInput("f_age", "Age", min = 16, max = 30, value = c(16, 30), step = 1, ticks = FALSE),
-      input_switch("weighted", "Use survey weights", value = TRUE),
       actionButton("reset", "Reset filters", icon = icon("rotate-left"), class = "btn-reset"),
       div(class = "filter-note", textOutput("filter_note"))
   )
@@ -496,7 +495,6 @@ page_help <- tagList(
              tags$dl(class = "glossary",
                tags$dt("Labour force"), tags$dd("Youth who are employed or unemployed. Students and others not looking for work are outside it."),
                tags$dt("Unemployment rate"), tags$dd("Unemployed youth divided by all youth in the labour force."),
-               tags$dt("Survey weights"), tags$dd("When on, numbers represent the whole youth population of Rwanda. When off, they describe the sample."),
                tags$dt("Informal employment"), tags$dd("Work without social security or other legal protection."),
                tags$dt("Time-related underemployment"), tags$dd("Working fewer hours than wanted and being available for more."),
                tags$dt("TVET"), tags$dd("Technical and Vocational Education and Training."),
@@ -552,7 +550,6 @@ ui <- page_sidebar(
               # Chart options: show/hide the numbers on the charts, sort the bars
               div(class = "top-switch", input_switch("labels", "Numbers on charts", value = TRUE)),
               div(class = "top-switch", input_switch("sort_bars", "Sort bars", value = FALSE)),
-              span(class = "pill", textOutput("mode_pill", inline = TRUE)),
               input_dark_mode(id = "dark", mode = "light")),
   sidebar = side_panel,
   tags$head(
@@ -612,7 +609,6 @@ server <- function(input, output, session) {
       filter(sex %in% input$f_sex, residence %in% input$f_res,
              province %in% input$f_prov, education_level %in% input$f_edu,
              between(age, input$f_age[1], input$f_age[2]))
-    d$.w <- if (isTRUE(input$weighted)) d$survey_weight else 1
     validate(need(nrow(d) >= 30, "Too few youth match these filters. Please widen the selection."))
     d
   })
@@ -629,34 +625,26 @@ server <- function(input, output, session) {
   output$filter_note <- renderText({
     paste(num(nrow(filtered())), "of", num(nrow(lfs)), "youth in the sample selected")
   })
-  # Sidebar snapshot (weighted or not, as chosen in the filters)
-  short_num <- function(x) {
-    if (x >= 1e6) return(paste0(sprintf("%.2f", x / 1e6), "M"))
-    if (x >= 1e4) return(paste0(round(x / 1e3), "K"))
-    num(x)
-  }
-  output$snap_rate  <- renderText(pct(weighted.mean(filtered()$unemployed, filtered()$.w)))
-  output$snap_lf    <- renderText(short_num(sum(filtered()$.w)))
-  output$snap_unemp <- renderText(short_num(sum(filtered()$.w * filtered()$unemployed)))
+  # Sidebar snapshot (follows the filters)
+  output$snap_rate  <- renderText(pct(overall_rate(filtered())))
+  output$snap_lf    <- renderText(num(nrow(filtered())))
+  output$snap_unemp <- renderText(num(sum(filtered()$unemployed)))
   output$snap_bar   <- renderUI({
-    r <- weighted.mean(filtered()$unemployed, filtered()$.w)
+    r <- overall_rate(filtered())
     div(class = "snap-fill", style = sprintf("width: %.1f%%;", 100 * r / 0.30))   # bar scale: 0 to 30%
   })
-
-  output$mode_pill <- renderText(if (isTRUE(input$weighted)) "Weighted estimates" else "Sample counts")
 
   # Small helpers used by many outputs
   share_of <- function(df, var, level) {
     d <- filter(df, !is.na(.data[[var]]))
     if (nrow(d) == 0) return(NA)
-    sum(d$.w[d[[var]] %in% level]) / sum(d$.w)
+    mean(d[[var]] %in% level)
   }
   rate_in <- function(var, level) {
     d <- filter(filtered(), .data[[var]] == level)
     if (nrow(d) == 0) return(NA)
     overall_rate(d)
   }
-  sample_text <- function(df) paste("Sample:", num(nrow(df)), "youth")
 
   # ===========================================================================
   # Executive summary
@@ -667,15 +655,14 @@ server <- function(input, output, session) {
     edu <- rate_by(d, "education_level") %>% filter(youth >= 30)
     top <- edu[which.max(edu$rate), ]
     p(HTML(sprintf(
-      "In 2025, about <b>%s</b> young people aged 16-30 were in Rwanda's labour force%s, and <b>%s</b> of them were unemployed (<b>%s</b>). %s The highest rate is among youth with <b>%s</b> education (<b>%s</b>). Use the filters on the left to focus on any group.",
-      num(sum(d$.w)), if (isTRUE(input$weighted)) "" else " (sample count)",
-      num(sum(d$.w * d$unemployed)), pct(overall_rate(d)),
+      "The 2025 LFS sample has <b>%s</b> young people aged 16-30 in the labour force, and <b>%s</b> of them were unemployed (<b>%s</b>). %s The highest rate is among youth with <b>%s</b> education (<b>%s</b>). Use the filters on the left to focus on any group.",
+      num(nrow(d)), num(sum(d$unemployed)), pct(overall_rate(d)),
       if (length(f) && length(m)) sprintf("Young women are more affected (<b>%s</b>) than young men (<b>%s</b>).", pct(f), pct(m)) else "",
       tolower(top$category), pct(top$rate))))
   })
 
-  output$k_youth  <- renderText(num(sum(filtered()$.w)))
-  output$k_unemp  <- renderText(num(sum(filtered()$.w * filtered()$unemployed)))
+  output$k_youth  <- renderText(num(nrow(filtered())))
+  output$k_unemp  <- renderText(num(sum(filtered()$unemployed)))
   output$k_rate   <- renderText(pct(overall_rate(filtered())))
   output$k_female <- renderText(pct(rate_in("sex", "Female")))
 
@@ -702,7 +689,7 @@ server <- function(input, output, session) {
 
   output$c_age <- renderPlotly({
     d <- filtered() %>% group_by(age, sex) %>%
-      summarise(rate = weighted.mean(unemployed, .w), n = n(), .groups = "drop")
+      summarise(rate = mean(unemployed), n = n(), .groups = "drop")
     plot_ly(d, x = ~age, y = ~rate, color = ~sex, colors = c(pal$blue, pal$gold),
             type = "scatter", mode = "lines+markers", line = list(width = 3),
             marker = list(size = 7), customdata = ~n,
@@ -731,7 +718,7 @@ server <- function(input, output, session) {
     else rate_chart(filtered(), input$x_var, sort = isTRUE(input$sort_bars))
   })
   output$i_who <- renderUI(insight_rate(filtered(), input$x_var, tolower(var_label(input$x_var))))
-  output$t_who <- renderUI(margin_table(filtered(), input$x_var, isTRUE(input$weighted)))
+  output$t_who <- renderUI(margin_table(filtered(), input$x_var))
   output$t_who_matrix <- renderUI({
     by <- if (split_on()) input$by_var else "sex"
     if (by == input$x_var) by <- "residence"
@@ -746,7 +733,7 @@ server <- function(input, output, session) {
   output$k_cert     <- renderText(pct(share_of(filter(filtered(), tvet_training == "Yes"), "tvet_completed",
                                                c("Yes, with certificate", "Yes with degree/Diploma"))))
   output$k_cert_sub <- renderText("of TVET trainees hold a certificate or diploma")
-  output$k_years    <- renderText(sprintf("%.1f", weighted.mean(filtered()$years_of_schooling, filtered()$.w)))
+  output$k_years    <- renderText(sprintf("%.1f", mean(filtered()$years_of_schooling)))
   output$k_years_sub <- renderText("years, youth in the labour force")
   output$k_upper     <- renderText(pct(rate_in("education_level", "Upper secondary")))
   output$k_upper_sub <- renderText("the highest of all education levels")
@@ -760,21 +747,21 @@ server <- function(input, output, session) {
   output$c_tvet_done  <- renderPlotly(donut_chart(tvet(), "tvet_completed"))
   output$c_tvet_after <- renderPlotly(share_chart(tvet(), "activity_after_tvet", pal$teal))
   output$c_tvet_time  <- renderPlotly(share_chart(tvet(), "time_to_job_after_tvet", pal$blue, ordered = TRUE))
-  output$t_edu <- renderUI(margin_table(filtered(), "education_level", isTRUE(input$weighted)))
+  output$t_edu <- renderUI(margin_table(filtered(), "education_level"))
 
   # ===========================================================================
   # Geography
   # ===========================================================================
   output$c_district <- renderPlotly(rate_chart(filtered(), "district", sort = TRUE))
   output$i_district <- renderUI(insight_rate(filtered(), "district", "district"))
-  output$t_prov     <- renderUI(margin_table(filtered(), "province", isTRUE(input$weighted)))
+  output$t_prov     <- renderUI(margin_table(filtered(), "province"))
   output$t_prov_res <- renderUI(rate_matrix_table(filtered(), "province", "residence"))
 
   # ===========================================================================
   # Unemployed youth
   # ===========================================================================
-  output$k_u_n         <- renderText(num(sum(unemployed()$.w)))
-  output$k_u_n_sub     <- renderText(sample_text(unemployed()))
+  output$k_u_n         <- renderText(num(nrow(unemployed())))
+  output$k_u_n_sub     <- renderText(paste("of", num(nrow(filtered())), "youth in the labour force"))
   output$k_u_short     <- renderText(pct(share_of(unemployed(), "unemployment_duration", "Less than 3 months")))
   output$k_u_short_sub <- renderText("recently became unemployed")
   output$k_u_never     <- renderText(pct(share_of(unemployed(), "ever_worked_before", "No")))
@@ -815,9 +802,9 @@ server <- function(input, output, session) {
   output$c_j_benefits <- renderPlotly({
     d <- employees() %>%
       group_by(sex) %>%
-      summarise(`Written contract` = weighted.mean(contract_type == "Yes, Written contract", .w),
-                `Social security`  = weighted.mean(social_security == "Yes", .w, na.rm = TRUE),
-                `Paid leave`       = weighted.mean(paid_leave == "Yes", .w, na.rm = TRUE)) %>%
+      summarise(`Written contract` = mean(contract_type == "Yes, Written contract"),
+                `Social security`  = mean(social_security == "Yes", na.rm = TRUE),
+                `Paid leave`       = mean(paid_leave == "Yes", na.rm = TRUE)) %>%
       pivot_longer(-sex, names_to = "benefit", values_to = "share")
     plot_ly(d, x = ~benefit, y = ~share, color = ~sex, colors = c(pal$blue, pal$gold), type = "bar",
             text = ~pct(share, 1), textposition = "outside", cliponaxis = FALSE,
@@ -840,13 +827,13 @@ server <- function(input, output, session) {
 
   care_data <- reactive({
     filtered() %>%
-      select(group = all_of(input$care_by), .w,
+      select(group = all_of(input$care_by),
              `Fetching water` = fetches_water, `Collecting firewood` = collects_firewood,
              `Household chores` = household_chores, `Caring for others` = care_work) %>%
-      pivot_longer(-c(group, .w), names_to = "activity", values_to = "answer") %>%
+      pivot_longer(-group, names_to = "activity", values_to = "answer") %>%
       filter(!is.na(answer)) %>%
       group_by(activity, group) %>%
-      summarise(share = weighted.mean(answer == "Yes", .w), .groups = "drop")
+      summarise(share = mean(answer == "Yes"), .groups = "drop")
   })
   output$c_h_care <- renderPlotly({
     d <- care_data()

@@ -72,16 +72,14 @@ dash_box <- function(title, icon, ..., insight_id = NULL, teal = FALSE) {
 # =============================================================================
 # 2. Calculations
 # =============================================================================
-# Every data frame passed in has a column `.w`: the survey weight when
-# weights are switched on, otherwise 1.
+# All numbers are sample counts and simple proportions.
 
 # Unemployment rate per category
 rate_by <- function(df, var) {
   df %>%
     filter(!is.na(.data[[var]])) %>%
     group_by(category = .data[[var]]) %>%
-    summarise(youth = n(), pop = sum(.w),
-              rate  = weighted.mean(unemployed, .w), .groups = "drop")
+    summarise(youth = n(), rate = mean(unemployed), .groups = "drop")
 }
 
 # Distribution (share) of a variable, optionally within groups
@@ -90,12 +88,12 @@ share_by <- function(df, var, by = NULL) {
   if (!is.null(by)) df <- df %>% filter(!is.na(.data[[by]])) %>% group_by(group = .data[[by]])
   df %>%
     group_by(category = .data[[var]], .add = TRUE) %>%
-    summarise(youth = n(), pop = sum(.w), .groups = "drop_last") %>%
-    mutate(share = pop / sum(pop)) %>%
+    summarise(youth = n(), .groups = "drop_last") %>%
+    mutate(share = youth / sum(youth)) %>%
     ungroup()
 }
 
-overall_rate <- function(df) weighted.mean(df$unemployed, df$.w)
+overall_rate <- function(df) mean(df$unemployed)
 
 
 # =============================================================================
@@ -158,7 +156,7 @@ rate_split_chart <- function(df, x, by) {
   d <- df %>%
     filter(!is.na(.data[[x]]), !is.na(.data[[by]])) %>%
     group_by(category = .data[[x]], group = .data[[by]]) %>%
-    summarise(youth = n(), rate = weighted.mean(unemployed, .w), .groups = "drop")
+    summarise(youth = n(), rate = mean(unemployed), .groups = "drop")
   plot_ly(d, x = ~category, y = ~rate, color = ~group, type = "bar",
           colors = pal_series[seq_len(n_distinct(d$group))], customdata = ~youth,
           text = ~pct(rate), textposition = "outside", cliponaxis = FALSE,
@@ -201,7 +199,7 @@ clustered_chart <- function(df, var, by) {
 # Donut chart
 donut_chart <- function(df, var) {
   d <- share_by(df, var)
-  plot_ly(d, labels = ~category, values = ~pop, type = "pie", hole = .55,
+  plot_ly(d, labels = ~category, values = ~youth, type = "pie", hole = .55,
           marker = list(colors = pal_series, line = list(color = "#FFFFFF", width = 2)),
           textinfo = "percent", textfont = list(color = "#FFFFFF", size = 14), sort = FALSE,
           hovertemplate = "<b>%{label}</b><br>%{percent}<extra></extra>") %>%
@@ -224,42 +222,38 @@ rate_cell <- function(rate, max_rate) {
 }
 
 # One-way table: Employed | Unemployed | Total | Rate | Share, with a Total row
-margin_table <- function(df, var, weighted = TRUE) {
+margin_table <- function(df, var) {
   d <- df %>%
     filter(!is.na(.data[[var]])) %>%
     group_by(category = .data[[var]]) %>%
-    summarise(emp   = sum(.w[employment_status == "Employed"]),
-              unemp = sum(.w[employment_status == "Unemployed"]),
-              n = n(), .groups = "drop") %>%
+    summarise(emp   = sum(employment_status == "Employed"),
+              unemp = sum(employment_status == "Unemployed"), .groups = "drop") %>%
     mutate(total = emp + unemp, rate = unemp / total, share = total / sum(total))
-  tot <- d %>% summarise(emp = sum(emp), unemp = sum(unemp), n = sum(n)) %>%
+  tot <- d %>% summarise(emp = sum(emp), unemp = sum(unemp)) %>%
     mutate(total = emp + unemp, rate = unemp / total, share = 1)
   max_rate <- max(d$rate)
 
-  count_label <- if (weighted) "(estimated)" else "(sample)"
   rows <- lapply(seq_len(nrow(d)), function(i) tags$tr(
     tags$td(as.character(d$category[i])),
     tags$td(class = "num", num(d$emp[i])),
     tags$td(class = "num", num(d$unemp[i])),
     tags$td(class = "num margin", num(d$total[i])),
     tags$td(class = "num", rate_cell(d$rate[i], max_rate)),
-    tags$td(class = "num", pct(d$share[i])),
-    tags$td(class = "num muted", num(d$n[i]))
+    tags$td(class = "num", pct(d$share[i]))
   ))
   tagList(
     div(class = "table-wrap", tags$table(class = "sum-table",
       tags$thead(tags$tr(tags$th("Category"), tags$th(class = "num", "Employed"),
                          tags$th(class = "num", "Unemployed"), tags$th(class = "num", "Total"),
-                         tags$th(class = "num", "Unemp. rate"), tags$th(class = "num", "Share"),
-                         tags$th(class = "num", "Sample n"))),
+                         tags$th(class = "num", "Unemp. rate"), tags$th(class = "num", "Share"))),
       tags$tbody(rows),
       tags$tfoot(tags$tr(tags$td("Total"), tags$td(class = "num", num(tot$emp)),
                          tags$td(class = "num", num(tot$unemp)), tags$td(class = "num", num(tot$total)),
                          tags$td(class = "num", rate_cell(tot$rate, max_rate)),
-                         tags$td(class = "num", "100%"), tags$td(class = "num", num(tot$n))))
+                         tags$td(class = "num", "100%")))
     )),
     div(class = "table-note",
-        paste("Counts are", count_label, "youth in the labour force.",
+        paste("Counts are youth in the labour force (LFS 2025 sample).",
               "Last row and 'Total' column are the margins."))
   )
 }
@@ -275,10 +269,10 @@ heat_colour <- function(rate, lo, hi) {
 rate_matrix_table <- function(df, x, by) {
   d <- df %>% filter(!is.na(.data[[x]]), !is.na(.data[[by]]))
   cell <- d %>% group_by(r = .data[[x]], c = .data[[by]]) %>%
-    summarise(rate = weighted.mean(unemployed, .w), n = n(), .groups = "drop")
-  row_m <- d %>% group_by(r = .data[[x]]) %>% summarise(rate = weighted.mean(unemployed, .w), n = n())
-  col_m <- d %>% group_by(c = .data[[by]]) %>% summarise(rate = weighted.mean(unemployed, .w), n = n())
-  all_rate <- weighted.mean(d$unemployed, d$.w)
+    summarise(rate = mean(unemployed), n = n(), .groups = "drop")
+  row_m <- d %>% group_by(r = .data[[x]]) %>% summarise(rate = mean(unemployed), n = n())
+  col_m <- d %>% group_by(c = .data[[by]]) %>% summarise(rate = mean(unemployed), n = n())
+  all_rate <- mean(d$unemployed)
   lo <- min(cell$rate); hi <- max(cell$rate)
   cols <- levels(droplevels(d[[by]])); rws <- levels(droplevels(d[[x]]))
 

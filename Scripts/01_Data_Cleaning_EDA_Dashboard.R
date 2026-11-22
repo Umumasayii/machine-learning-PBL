@@ -21,7 +21,6 @@ youth <- youth_raw %>%
     household_id            = HHID,
     cluster_id              = PSU_NO,
     survey_strata           = lfs_strata,
-    survey_weight           = weight2,
     employment_status       = status1,
     age                     = A04,
     sex                     = A01,
@@ -91,7 +90,7 @@ youth <- youth_raw %>%
   )
 
 
-numeric_vars <- c("household_id", "cluster_id", "survey_weight", "age",
+numeric_vars <- c("household_id", "cluster_id", "age",
                   "years_of_schooling", "income_cash")
 
 youth <- youth %>%

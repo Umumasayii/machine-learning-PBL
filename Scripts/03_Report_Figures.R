@@ -1,6 +1,6 @@
 # =============================================================================
 #  Extra figures for the report (EDA)
-#  1. Unemployment rate by education level and sex (survey-weighted)
+#  1. Unemployment rate by education level and sex
 #  2. Association matrix of the predictors (Cramer's V)
 #  Run after 01_Data_Cleaning_EDA_Dashboard.R and 02_Data_Preparation_Model.R
 # =============================================================================
@@ -17,11 +17,10 @@ dir.create("Outputs/Figures", showWarnings = FALSE)
 # -----------------------------------------------------------------------------
 # 1. Unemployment rate by education level and sex
 # -----------------------------------------------------------------------------
-# Weighted rate = sum of weights of unemployed / sum of weights of everybody
+# Rate = number of unemployed youth / number of youth in the labour force
 rates <- eda %>%
   group_by(education_level, sex) %>%
-  summarise(rate = sum(survey_weight[employment_status == "Unemployed"]) / sum(survey_weight),
-            .groups = "drop")
+  summarise(rate = mean(employment_status == "Unemployed"), .groups = "drop")
 
 fig1 <- ggplot(rates, aes(x = education_level, y = rate, fill = sex)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.75) +
@@ -29,7 +28,7 @@ fig1 <- ggplot(rates, aes(x = education_level, y = rate, fill = sex)) +
             position = position_dodge(width = 0.8), vjust = -0.4, size = 3.6, fontface = "bold") +
   scale_fill_manual(values = c("Male" = "#1F4E79", "Female" = "#D9822B")) +
   scale_y_continuous(labels = scales::percent, limits = c(0, 0.32)) +
-  labs(x = "Education level", y = "Unemployment rate (weighted)", fill = "Sex") +
+  labs(x = "Education level", y = "Unemployment rate", fill = "Sex") +
   theme_minimal(base_size = 13) +
   theme(legend.position = "top", text = element_text(face = "bold"))
 

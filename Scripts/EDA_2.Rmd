@@ -127,15 +127,8 @@ A model that predicts "Employed" for everyone would be about 85% accurate
 and still useless. Accuracy alone is therefore not a good metric. We will
 use recall, F1 and MCC for the unemployed class, and ROC/PR-AUC.
 
-```{r weighted-rate}
-weighted_rate <- lfs %>%
-  summarise(rate = weighted.mean(employment_status == "Unemployed",
-                                 w = survey_weight))
-```
-
-The sample rate is `r percent(mean(lfs$employment_status == "Unemployed"), 0.1)`.
-Using survey weights, the youth unemployment rate is
-`r percent(weighted_rate$rate, 0.1)`.
+The youth unemployment rate in the sample is
+`r percent(mean(lfs$employment_status == "Unemployed"), 0.1)`.
 
 # Missing values
 
