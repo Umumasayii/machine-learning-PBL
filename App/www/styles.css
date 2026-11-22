@@ -360,3 +360,50 @@ body.no-labels .js-plotly-plot .textpoint {
 .top-switch .form-check { margin: 0; padding-top: .1rem; }
 .top-switch .form-check-label { color: #fff; font-size: .82rem; font-weight: 700; white-space: nowrap; }
 .top-switch .form-check-input:checked { background-color: var(--teal); border-color: var(--teal); }
+
+/* ---------- Top bar: machine-learning shortcuts ------------------------------ */
+.ml-bar {
+  display: flex; align-items: center; gap: .3rem;
+  background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 10px; padding: .22rem .3rem .22rem .5rem; margin-right: .3rem;
+}
+.ml-badge { display: flex; align-items: center; gap: .45rem; color: var(--teal-light); padding-right: .45rem;
+            border-right: 1px solid rgba(255, 255, 255, .18); margin-right: .15rem; }
+.ml-badge > svg { font-size: 1.15rem; }
+.ml-badge-text { display: flex; flex-direction: column; line-height: 1.05; }
+.ml-badge-top  { font-size: .62rem; text-transform: uppercase; letter-spacing: .08em; color: var(--teal-light); font-weight: 700; }
+.ml-badge-main { font-size: .8rem; color: #fff; font-weight: 800; white-space: nowrap; }
+.ml-btn {
+  display: inline-flex; align-items: center; gap: .32rem;
+  background: transparent; color: #fff; border: 1px solid transparent; border-radius: 7px;
+  font-size: .78rem; font-weight: 700; padding: .3rem .5rem; white-space: nowrap; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.ml-btn:hover { background: var(--teal); border-color: var(--teal-light); }
+.ml-btn:focus-visible { outline: 2px solid var(--teal-light); outline-offset: 1px; }
+.top-divider { width: 1px; height: 26px; background: rgba(255, 255, 255, .2); margin: 0 .4rem 0 .1rem; }
+.ml-anchor { scroll-margin-top: 80px; }
+
+/* Smaller screens: icons only, then hide the badge */
+@media (max-width: 1500px) { .ml-btn-text { display: none; } .ml-btn { padding: .35rem .45rem; } }
+@media (max-width: 1150px) { .ml-badge-text { display: none; } }
+@media (max-width: 900px)  { .ml-bar, .top-divider { display: none; } }
+
+/* ---------- Sidebar: live snapshot card (fills the space above the menu) ------- */
+.bslib-sidebar-layout > .sidebar > .sidebar-content { padding-top: .8rem !important; }
+.side-snapshot {
+  margin: 0 1.7rem .4rem 0;           /* room on the right for the collapse arrow */
+  background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+  border: 1px solid rgba(255, 255, 255, .18); border-radius: 12px;
+  padding: .65rem .8rem .7rem; color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+}
+.snap-head  { font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; color: #D7F2F1; font-weight: 700; }
+.snap-rate  { font-size: 2rem; font-weight: 800; line-height: 1.1; margin-top: .15rem; }
+.snap-label { font-size: .74rem; color: #E6F6F5; font-weight: 600; margin-bottom: .4rem; }
+.snap-bar   { height: 6px; border-radius: 999px; background: rgba(255, 255, 255, .25); overflow: hidden; display: block; }
+.snap-bar > div, .snap-bar .shiny-html-output { display: block; height: 100%; }
+.snap-fill  { height: 100%; background: #FFD8A8; border-radius: 999px; max-width: 100%; transition: width .4s; }
+.snap-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; margin-top: .55rem;
+              border-top: 1px solid rgba(255, 255, 255, .2); padding-top: .45rem; }
+.snap-num   { font-size: 1.05rem; font-weight: 800; }
+.snap-small { font-size: .68rem; color: #D7F2F1; font-weight: 600; }

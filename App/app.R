@@ -131,6 +131,17 @@ picker <- function(id, label, var) {
 
 side_panel <- sidebar(
   width = 270, open = "desktop",
+  # Snapshot card: the headline numbers, updated by the filters below
+  div(class = "side-snapshot",
+      div(class = "snap-head", bs_icon("broadcast"), " Live snapshot"),
+      div(class = "snap-rate", textOutput("snap_rate", inline = TRUE)),
+      div(class = "snap-label", "youth unemployment rate"),
+      div(class = "snap-bar", uiOutput("snap_bar", inline = TRUE)),
+      div(class = "snap-grid",
+          div(div(class = "snap-num", textOutput("snap_lf", inline = TRUE)),
+              div(class = "snap-small", "in labour force")),
+          div(div(class = "snap-num", textOutput("snap_unemp", inline = TRUE)),
+              div(class = "snap-small", "unemployed")))),
   div(class = "side-section", "Menu"),
   div(class = "nav-menu",
       radioGroupButtons(
@@ -376,6 +387,7 @@ page_model <- tagList(
       )),
 
   # Model comparison
+  div(id = "ml_compare", class = "ml-anchor"),
   layout_columns(
     col_widths = c(6, 6),
     dash_box("Model comparison on the test set", "trophy-fill", uiOutput("t_models"),
@@ -383,6 +395,7 @@ page_model <- tagList(
     dash_box("Main scores by model", "bar-chart-steps", teal = TRUE,
              plotlyOutput("c_models", height = chart_h))
   ),
+  div(id = "ml_roc", class = "ml-anchor"),
   layout_columns(
     col_widths = c(6, 6),
     dash_box("ROC curves on the test set", "graph-up-arrow", teal = TRUE,
@@ -392,6 +405,7 @@ page_model <- tagList(
   ),
 
   # Cut-off explorer
+  div(id = "ml_cut", class = "ml-anchor"),
   layout_columns(
     col_widths = c(6, 6),
     dash_box(paste("Confusion matrix of", app_label, "- try a cut-off"), "grid-fill",
@@ -401,6 +415,7 @@ page_model <- tagList(
     dash_box(paste(app_label, "risk scores on the test set"), "bar-chart-fill", teal = TRUE,
              plotlyOutput("c_hist", height = chart_h), insight_id = "i_hist")
   ),
+  div(id = "ml_imp", class = "ml-anchor"),
   layout_columns(
     col_widths = c(6, 6),
     dash_box("Which variables matter most?", "list-ol", teal = TRUE,
@@ -417,6 +432,7 @@ page_model <- tagList(
   ),
 
   # Risk calculator
+  div(id = "ml_calc", class = "ml-anchor"),
   card(class = "dash-box calc-box", full_screen = TRUE,
        card_header(bs_icon("calculator-fill"), paste0("Unemployment risk calculator (", app_label, ")")),
        card_body(
@@ -498,6 +514,29 @@ page_help <- tagList(
   )
 )
 
+# ---- Machine-learning shortcuts in the top bar ------------------------------------
+# Each button opens the "Model & predictions" page and scrolls to one section.
+ml_button <- function(target, icon_name, label) {
+  tags$button(class = "ml-btn", type = "button", title = label,
+              onclick = sprintf("mlJump('%s')", target),
+              bs_icon(icon_name), span(class = "ml-btn-text", label))
+}
+
+ml_shortcuts <- div(
+  class = "ml-bar",
+  div(class = "ml-badge", title = "Best model on the test set",
+      bs_icon("cpu-fill"),
+      div(class = "ml-badge-text",
+          span(class = "ml-badge-top", "Machine learning"),
+          span(class = "ml-badge-main", paste0(app_label, " · AUC ", sprintf("%.3f", app_row$ROC_AUC))))),
+  ml_button("ml_compare", "trophy-fill", "Models"),
+  ml_button("ml_roc", "graph-up-arrow", "ROC"),
+  ml_button("ml_cut", "sliders", "Cut-off"),
+  ml_button("ml_imp", "list-ol", "Importance"),
+  ml_button("ml_calc", "calculator-fill", "Risk calculator")
+)
+
+
 # ---- Assemble -------------------------------------------------------------------
 ui <- page_sidebar(
   window_title = "Rwanda Youth Employment",
@@ -508,6 +547,8 @@ ui <- page_sidebar(
               span(class = "brand-name", "Rwanda Youth Employment"),
               span(class = "brand-sub", "LFS 2025"),
               div(class = "spacer"),
+              ml_shortcuts,
+              div(class = "top-divider"),
               # Chart options: show/hide the numbers on the charts, sort the bars
               div(class = "top-switch", input_switch("labels", "Numbers on charts", value = TRUE)),
               div(class = "top-switch", input_switch("sort_bars", "Sort bars", value = FALSE)),
@@ -521,7 +562,25 @@ ui <- page_sidebar(
     tags$script(HTML("
       $(document).on('change', '#labels', function() {
         document.body.classList.toggle('no-labels', !this.checked);
-      });"))
+      });
+      // Machine-learning shortcuts: open the model page from the menu,
+      // wait until it is visible (checks every 0.1 s, up to 15 s), then scroll to the section.
+      function mlJump(id) {
+        var menuItem = document.querySelector('#page input[value=\"model\"]');
+        if (menuItem && !menuItem.checked) menuItem.click();
+        var tries = 0;
+        var timer = setInterval(function() {
+          var el = document.getElementById(id);
+          tries++;
+          if (el && el.offsetParent !== null) {
+            clearInterval(timer);
+            el.scrollIntoView({block: 'start'});
+            setTimeout(function() { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 600);
+          } else if (tries > 150) {
+            clearInterval(timer);
+          }
+        }, 100);
+      }"))
   ),
   navset_hidden(
     id = "pages",
@@ -570,6 +629,20 @@ server <- function(input, output, session) {
   output$filter_note <- renderText({
     paste(num(nrow(filtered())), "of", num(nrow(lfs)), "youth in the sample selected")
   })
+  # Sidebar snapshot (weighted or not, as chosen in the filters)
+  short_num <- function(x) {
+    if (x >= 1e6) return(paste0(sprintf("%.2f", x / 1e6), "M"))
+    if (x >= 1e4) return(paste0(round(x / 1e3), "K"))
+    num(x)
+  }
+  output$snap_rate  <- renderText(pct(weighted.mean(filtered()$unemployed, filtered()$.w)))
+  output$snap_lf    <- renderText(short_num(sum(filtered()$.w)))
+  output$snap_unemp <- renderText(short_num(sum(filtered()$.w * filtered()$unemployed)))
+  output$snap_bar   <- renderUI({
+    r <- weighted.mean(filtered()$unemployed, filtered()$.w)
+    div(class = "snap-fill", style = sprintf("width: %.1f%%;", 100 * r / 0.30))   # bar scale: 0 to 30%
+  })
+
   output$mode_pill <- renderText(if (isTRUE(input$weighted)) "Weighted estimates" else "Sample counts")
 
   # Small helpers used by many outputs
