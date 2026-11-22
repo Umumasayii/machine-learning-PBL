@@ -1,0 +1,175 @@
+Loading required package: ggplot2
+Loading required package: lattice
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:stats':
+
+    filter, lag
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+Type 'citation("pROC")' for a citation.
+
+Attaching package: 'pROC'
+
+The following objects are masked from 'package:stats':
+
+    cov, smooth, var
+
+Loading required package: rlang
+Loading required package: foreach
+Loading required package: iterators
+Loading required package: parallel
+Rows: 15958 | Predictors: 18 
+
+Unemployed   Employed 
+     0.147      0.853 
+# A tibble: 4 × 4
+  employment_status     n set      share
+  <fct>             <int> <chr>    <dbl>
+1 Unemployed         1669 Training 0.148
+2 Employed           9583 Training 0.852
+3 Unemployed          684 Test     0.145
+4 Employed           4022 Test     0.855
+
+Near-zero-variance predictors: disability 
+Training Baseline (majority) ...
+  done in 0.2 minutes
+Training Logistic regression ...
+  done in 0.1 minutes
+Training Elastic net ...
+  done in 0.4 minutes
+Training Decision tree ...
+  done in 0.1 minutes
+Training Naive Bayes ...
+  done in 0 minutes
+Warning messages:
+1: Setting row names on a tibble is deprecated. 
+2: naive_bayes(): Feature household_relationship - zero probabilities are present. Consider Laplace smoothing. 
+Training Random forest ...
+  done in 3.7 minutes
+Training XGBoost ...
+  done in 0.7 minutes
+# A tibble: 7 × 2
+  Model               `Best hyper-parameters`                                   
+  <chr>               <chr>                                                     
+1 Baseline (majority) parameter = none                                          
+2 Logistic regression parameter = none                                          
+3 Elastic net         alpha = 0.5, lambda = 0.00464                             
+4 Decision tree       cp = 5e-04                                                
+5 Naive Bayes         laplace = 0, usekernel = TRUE, adjust = 1                 
+6 Random forest       mtry = 6, splitrule = gini, min.node.size = 60            
+7 XGBoost             nrounds = 100, max_depth = 2, eta = 0.1, gamma = 0, colsa…
+# A tibble: 6 × 9
+  Model               ROC        PR_AUC Sens  Spec  Precision F1    BalAcc MCC  
+  <chr>               <chr>      <chr>  <chr> <chr> <chr>     <chr> <chr>  <chr>
+1 XGBoost             0.682 (0.… 0.263… 0.00… 1.00… 0.293 (0… 0.00… 0.502… 0.02…
+2 Random forest       0.677 (0.… 0.251… 0.00… 1.00… 0.400 (0… 0.00… 0.501… 0.02…
+3 Elastic net         0.671 (0.… 0.253… 0.00… 1.00… 0.200 (0… 0.00… 0.500… 0.01…
+4 Logistic regression 0.668 (0.… 0.249… 0.00… 0.99… 0.433 (0… 0.01… 0.503… 0.04…
+5 Naive Bayes         0.661 (0.… 0.238… 0.10… 0.96… 0.328 (0… 0.15… 0.532… 0.11…
+6 Decision tree       0.623 (0.… 0.213… 0.07… 0.96… 0.266 (0… 0.11… 0.518… 0.06…
+
+Best model by CV ROC AUC: XGBoost 
+There were 50 or more warnings (use warnings() to see the first 50)
+# A tibble: 6 × 6
+  Model               threshold Sensitivity Specificity    F1     J
+  <chr>                   <dbl>       <dbl>       <dbl> <dbl> <dbl>
+1 Decision tree            0.09       0.801       0.396 0.304 0.197
+2 Elastic net              0.14       0.750       0.492 0.321 0.242
+3 Logistic regression      0.13       0.757       0.483 0.319 0.239
+4 Naive Bayes              0.1        0.673       0.555 0.317 0.228
+5 Random forest            0.14       0.741       0.510 0.325 0.251
+6 XGBoost                  0.15       0.696       0.566 0.332 0.262
+# A tibble: 14 × 13
+   Model               Rule          Cutoff `ROC AUC` `PR AUC` Accuracy
+   <chr>               <chr>          <dbl>     <dbl>    <dbl>    <dbl>
+ 1 Baseline (majority) Default 0.5     0.5      0.5      0.145    0.855
+ 2 Baseline (majority) Tuned cut-off   0.5      0.5      0.145    0.855
+ 3 Logistic regression Default 0.5     0.5      0.65     0.219    0.855
+ 4 Logistic regression Tuned cut-off   0.13     0.65     0.219    0.528
+ 5 Elastic net         Default 0.5     0.5      0.651    0.22     0.855
+ 6 Elastic net         Tuned cut-off   0.14     0.651    0.22     0.529
+ 7 Decision tree       Default 0.5     0.5      0.605    0.211    0.846
+ 8 Decision tree       Tuned cut-off   0.09     0.605    0.211    0.487
+ 9 Naive Bayes         Default 0.5     0.5      0.636    0.218    0.836
+10 Naive Bayes         Tuned cut-off   0.1      0.636    0.218    0.574
+11 Random forest       Default 0.5     0.5      0.659    0.244    0.855
+12 Random forest       Tuned cut-off   0.14     0.659    0.244    0.542
+13 XGBoost             Default 0.5     0.5      0.657    0.234    0.855
+14 XGBoost             Tuned cut-off   0.15     0.657    0.234    0.576
+   `Balanced accuracy` Recall Specificity Precision     F1 Kappa     MCC
+                 <dbl>  <dbl>       <dbl>     <dbl>  <dbl> <dbl>   <dbl>
+ 1               0.5    0           1        NA     NA     0     NaN    
+ 2               0.5    0           1        NA     NA     0     NaN    
+ 3               0.5    0           1        NA     NA     0     NaN    
+ 4               0.609  0.722       0.495     0.196  0.308 0.103   0.154
+ 5               0.5    0           1        NA     NA     0     NaN    
+ 6               0.602  0.705       0.5       0.193  0.303 0.097   0.144
+ 7               0.515  0.05        0.981     0.306  0.086 0.047   0.071
+ 8               0.586  0.725       0.446     0.182  0.291 0.077   0.122
+ 9               0.524  0.083       0.964     0.282  0.129 0.067   0.082
+10               0.59   0.614       0.567     0.194  0.295 0.095   0.128
+11               0.5    0           1        NA     NA     0     NaN    
+12               0.61   0.706       0.514     0.198  0.31  0.107   0.155
+13               0.501  0.001       1         0.5    0.003 0.002   0.021
+14               0.619  0.678       0.559     0.207  0.318 0.122   0.167
+Confusion Matrix and Statistics
+
+            Reference
+Prediction   Unemployed Employed
+  Unemployed        464     1774
+  Employed          220     2248
+                                         
+               Accuracy : 0.5763         
+                 95% CI : (0.562, 0.5905)
+    No Information Rate : 0.8547         
+    P-Value [Acc > NIR] : 1              
+                                         
+                  Kappa : 0.1221         
+                                         
+ Mcnemar's Test P-Value : <2e-16         
+                                         
+            Sensitivity : 0.6784         
+            Specificity : 0.5589         
+         Pos Pred Value : 0.2073         
+         Neg Pred Value : 0.9109         
+              Precision : 0.2073         
+                 Recall : 0.6784         
+                     F1 : 0.3176         
+             Prevalence : 0.1453         
+         Detection Rate : 0.0986         
+   Detection Prevalence : 0.4756         
+      Balanced Accuracy : 0.6186         
+                                         
+       'Positive' Class : Unemployed     
+                                         
+# A tibble: 9 × 7
+  Variable        Group           Recall Specificity Precision    F1 `ROC AUC`
+  <chr>           <fct>            <dbl>       <dbl>     <dbl> <dbl>     <dbl>
+1 sex             Male             0.433       0.769     0.214 0.287     0.652
+2 sex             Female           0.884       0.321     0.205 0.332     0.641
+3 residence       Urban            0.694       0.635     0.239 0.355     0.721
+4 residence       Rural            0.668       0.507     0.191 0.297     0.61 
+5 education_level None             0.495       0.651     0.166 0.249     0.615
+6 education_level Primary          0.65        0.567     0.188 0.292     0.628
+7 education_level Lower secondary  0.756       0.529     0.212 0.332     0.649
+8 education_level Upper secondary  0.876       0.352     0.27  0.412     0.693
+9 education_level University       0.853       0.497     0.264 0.403     0.714
+# A tibble: 3 × 12
+  Strategy             Cutoff `ROC AUC` `PR AUC` Accuracy `Balanced accuracy`
+  <chr>                 <dbl>     <dbl>    <dbl>    <dbl>               <dbl>
+1 None (tuned cut-off)   0.15     0.657    0.234    0.576               0.619
+2 Down-sampling          0.5      0.653    0.236    0.559               0.609
+3 Up-sampling            0.5      0.656    0.235    0.565               0.613
+  Recall Specificity Precision    F1 Kappa   MCC
+   <dbl>       <dbl>     <dbl> <dbl> <dbl> <dbl>
+1  0.678       0.559     0.207 0.318 0.122 0.167
+2  0.68        0.539     0.201 0.31  0.11  0.154
+3  0.681       0.545     0.203 0.313 0.115 0.16 
+
+Done. Best model: XGBoost | cut-off: 0.15 
+Tables in Outputs/ML, figures in Outputs/Figures

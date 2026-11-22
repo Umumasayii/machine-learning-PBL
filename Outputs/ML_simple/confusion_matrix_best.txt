@@ -1,0 +1,30 @@
+Confusion Matrix and Statistics
+
+            Reference
+Prediction   Unemployed Employed
+  Unemployed        438     1536
+  Employed          267     2545
+                                         
+               Accuracy : 0.6233         
+                 95% CI : (0.6094, 0.637)
+    No Information Rate : 0.8527         
+    P-Value [Acc > NIR] : 1              
+                                         
+                  Kappa : 0.1404         
+                                         
+ Mcnemar's Test P-Value : <2e-16         
+                                         
+            Sensitivity : 0.62128        
+            Specificity : 0.62362        
+         Pos Pred Value : 0.22188        
+         Neg Pred Value : 0.90505        
+              Precision : 0.22188        
+                 Recall : 0.62128        
+                     F1 : 0.32699        
+             Prevalence : 0.14730        
+         Detection Rate : 0.09152        
+   Detection Prevalence : 0.41245        
+      Balanced Accuracy : 0.62245        
+                                         
+       'Positive' Class : Unemployed     
+                                         

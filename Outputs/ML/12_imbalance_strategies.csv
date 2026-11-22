@@ -1,0 +1,4 @@
+"Strategy","Cutoff","ROC AUC","PR AUC","Accuracy","Balanced accuracy","Recall","Specificity","Precision","F1","Kappa","MCC"
+"None (tuned cut-off)",0.15,0.657,0.234,0.576,0.619,0.678,0.559,0.207,0.318,0.122,0.167
+"Down-sampling",0.5,0.653,0.236,0.559,0.609,0.68,0.539,0.201,0.31,0.11,0.154
+"Up-sampling",0.5,0.656,0.235,0.565,0.613,0.681,0.545,0.203,0.313,0.115,0.16

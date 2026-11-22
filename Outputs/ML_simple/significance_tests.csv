@@ -1,0 +1,6 @@
+Comparison,AUC_difference,p_value,Significant
+Random forest vs GBM,0.004,0.587,No
+Random forest vs LDA,0.011,0.198,No
+Random forest vs Lasso,0.016,0.056,No
+Random forest vs Logistic,0.019,0.038,Yes
+Random forest vs KNN,0.049,0,Yes

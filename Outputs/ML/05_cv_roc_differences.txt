@@ -1,0 +1,24 @@
+
+Call:
+summary.diff.resamples(object = diff(cv_results, metric = "ROC"))
+
+p-value adjustment: bonferroni 
+Upper diagonal: estimates of the difference
+Lower diagonal: p-value for H0: difference = 0
+
+ROC 
+                    Logistic regression Elastic net Decision tree Naive Bayes
+Logistic regression                     -0.003505    0.044921      0.006348  
+Elastic net         1.00000                          0.048426      0.009853  
+Decision tree       0.64838             0.31821                   -0.038573  
+Naive Bayes         1.00000             0.84769     0.90469                  
+Random forest       0.44647             1.00000     0.26324       0.11001    
+XGBoost             0.38971             0.24361     0.11877       0.04586    
+                    Random forest XGBoost  
+Logistic regression -0.009247     -0.014470
+Elastic net         -0.005742     -0.010964
+Decision tree       -0.054168     -0.059390
+Naive Bayes         -0.015595     -0.020818
+Random forest                     -0.005222
+XGBoost             1.00000                
+

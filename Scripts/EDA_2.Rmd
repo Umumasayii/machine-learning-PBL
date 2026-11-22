@@ -1,0 +1,389 @@
+---
+title: "Youth Employment in Rwanda: Exploratory Data Analysis"
+subtitle: "Labour Force Survey 2025, youth aged 16-30 in the labour force"
+author: "Niyobyose Brancal"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+    fig_caption: true
+    extra_dependencies: ["booktabs", "float"]
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE,
+  fig.align = "center", fig.width = 8, fig.height = 4.5,
+  fig.pos = "H", out.width = "100%"
+)
+```
+
+# Setup
+
+```{r packages}
+library(tidyverse)   # data manipulation and ggplot2
+library(knitr)       # kable() tables
+library(patchwork)   # combine plots
+library(scales)      # percent labels
+
+theme_set(theme_minimal(base_size = 11))
+
+# Colours used in every chart
+status_colours <- c("Employed" = "#2C7FB8", "Unemployed" = "#E6550D")
+```
+
+The EDA data is created by `01_Data_Cleaning_EDA_Dashboard.R` and the model data by `02_Data_Preparation_Model.R`.
+
+```{r load-data}
+lfs   <- readRDS("../Data/RW_LFS2025_Youth_EDA.rds")    # rich data (EDA)
+model <- readRDS("../Data/RW_LFS2025_Youth_Model.rds")  # predictors only (ML)
+```
+
+The analysis covers `r format(nrow(lfs), big.mark = ",")` young people
+in the labour force. There are `r ncol(model) - 2` candidate predictors.
+
+```{r helpers}
+# Small helper functions used in the rest of this document
+
+# Unemployment rate (%) for each category of one variable
+unemployment_by <- function(data, variable) {
+  data %>%
+    group_by(category = .data[[variable]]) %>%
+    summarise(
+      people     = n(),
+      unemployed = sum(employment_status == "Unemployed"),
+      rate       = unemployed / people
+    )
+}
+
+# Bar chart of the unemployment rate by category
+plot_rate <- function(data, variable, title) {
+  overall <- mean(data$employment_status == "Unemployed")
+
+  unemployment_by(data, variable) %>%
+    ggplot(aes(x = rate, y = fct_rev(category))) +
+    geom_col(fill = status_colours["Unemployed"], width = 0.7) +
+    geom_vline(xintercept = overall, linetype = "dashed") +
+    geom_text(aes(label = percent(rate, accuracy = 0.1)),
+              hjust = -0.15, size = 3) +
+    scale_x_continuous(labels = percent,
+                       expand = expansion(mult = c(0, 0.25))) +
+    labs(title = title, x = "Unemployment rate", y = NULL)
+}
+
+# Cramer's V: strength of association between two categorical variables
+# (0 = no association, 1 = perfect association)
+cramers_v <- function(x, y) {
+  tab  <- table(x, y)
+  chi2 <- suppressWarnings(chisq.test(tab, correct = FALSE)$statistic)
+  k    <- min(nrow(tab), ncol(tab)) - 1
+  as.numeric(sqrt(chi2 / (sum(tab) * k)))
+}
+```
+
+# Dataset description
+
+```{r variable-table}
+describe_variable <- function(x) {
+  if (is.numeric(x)) {
+    paste0("Numeric, ", min(x, na.rm = TRUE), " to ", max(x, na.rm = TRUE))
+  } else {
+    paste0("Categorical, ", nlevels(x), " groups")
+  }
+}
+
+variable_info <- tibble(
+  Variable = names(model)[-(1:2)],
+  Type     = map_chr(model[-(1:2)], describe_variable)
+)
+
+variable_info %>%
+  kable(caption = "Candidate predictors used for machine learning",
+        booktabs = TRUE)
+```
+
+# Outcome: employment status
+
+```{r outcome, fig.height = 3}
+outcome <- lfs %>%
+  count(employment_status) %>%
+  mutate(share = n / sum(n))
+
+ggplot(outcome, aes(x = employment_status, y = share,
+                    fill = employment_status)) +
+  geom_col(width = 0.6, show.legend = FALSE) +
+  geom_text(aes(label = paste0(percent(share, accuracy = 0.1),
+                               "\n(n = ", comma(n), ")")),
+            vjust = -0.3, size = 3.5) +
+  scale_fill_manual(values = status_colours) +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  labs(title = "Employment status of youth in the labour force",
+       x = NULL, y = "Share of youth")
+```
+
+The classes are **imbalanced**. About 1 in 7 young people is unemployed.
+A model that predicts "Employed" for everyone would be about 85% accurate
+and still useless. Accuracy alone is therefore not a good metric. We will
+use recall, F1 and MCC for the unemployed class, and ROC/PR-AUC.
+
+```{r weighted-rate}
+weighted_rate <- lfs %>%
+  summarise(rate = weighted.mean(employment_status == "Unemployed",
+                                 w = survey_weight))
+```
+
+The sample rate is `r percent(mean(lfs$employment_status == "Unemployed"), 0.1)`.
+Using survey weights, the youth unemployment rate is
+`r percent(weighted_rate$rate, 0.1)`.
+
+# Missing values
+
+```{r missing-table}
+tvet_vars     <- c("tvet_duration", "tvet_completed", "activity_after_tvet",
+                   "time_to_job_after_tvet")
+time_use_vars <- c("collects_firewood", "fetches_water", "household_chores",
+                   "care_work")
+unemp_vars    <- c("unemployment_duration", "ever_worked_before",
+                   "main_income_source")
+employee_vars <- c("contract_type", "social_security", "paid_leave",
+                   "how_job_found", "income_band", "income_cash")
+
+reason_for <- function(v) {
+  case_when(
+    v %in% tvet_vars     ~ "Asked only to youth with TVET",
+    v %in% time_use_vars ~ "Non-response (not filled in)",
+    v %in% unemp_vars    ~ "Asked only to unemployed youth",
+    v %in% employee_vars ~ "Asked only to paid employees",
+    v == "commute_mode"  ~ "Asked only to youth working away from home",
+    TRUE                 ~ "Asked only to employed youth"
+  )
+}
+
+tibble(
+  Variable = names(lfs),
+  Missing  = colSums(is.na(lfs))
+) %>%
+  filter(Missing > 0) %>%
+  mutate(Percent = percent(Missing / nrow(lfs), accuracy = 0.1),
+         Reason  = reason_for(Variable)) %>%
+  arrange(desc(Missing)) %>%
+  kable(caption = "Variables with missing values (EDA dataset)",
+        booktabs = TRUE)
+```
+
+Almost all of these are **structural** missing values: the question was not
+asked to that person. They are not filled in. Variables asked to only the
+employed or only the unemployed are not used as predictors, because they
+would give the answer away (data leakage). The only real non-response is in
+the time-use questions (about 6%), which are left out of percentages.
+The modelling dataset has `r sum(is.na(model))` missing values.
+
+```{r leakage-check}
+# Proof of leakage: job sector is missing for every unemployed person
+table(Status = lfs$employment_status,
+      Sector_missing = is.na(lfs$economic_sector))
+```
+
+# Numeric predictors
+
+```{r numeric-summary}
+model %>%
+  group_by(employment_status) %>%
+  summarise(across(c(age, years_of_schooling, household_size),
+                   ~ sprintf("%.1f (%.1f)", mean(.x), sd(.x)))) %>%
+  rename(Status = employment_status, Age = age,
+         `Years of schooling` = years_of_schooling,
+         `Household size` = household_size) %>%
+  kable(caption = "Mean (standard deviation) by employment status",
+        booktabs = TRUE)
+```
+
+```{r numeric-plots, fig.height = 3.5}
+model %>%
+  select(employment_status, age, years_of_schooling, household_size) %>%
+  pivot_longer(-employment_status) %>%
+  mutate(name = recode(name,
+                       age = "Age",
+                       years_of_schooling = "Years of schooling",
+                       household_size = "Household size")) %>%
+  ggplot(aes(x = employment_status, y = value, fill = employment_status)) +
+  geom_boxplot(show.legend = FALSE, outlier.alpha = 0.3) +
+  facet_wrap(~ name, scales = "free_y") +
+  scale_fill_manual(values = status_colours) +
+  labs(title = "Numeric predictors by employment status", x = NULL, y = NULL)
+```
+
+```{r numeric-tests}
+# Wilcoxon test: do employed and unemployed youth differ?
+numeric_vars <- c("age", "years_of_schooling", "household_size")
+
+map_dfr(numeric_vars, function(v) {
+  test <- wilcox.test(model[[v]] ~ model$employment_status)
+  tibble(Variable = v, `p-value` = format.pval(test$p.value, digits = 3))
+}) %>%
+  kable(caption = "Wilcoxon rank-sum tests", booktabs = TRUE)
+```
+
+# Categorical predictors
+
+The dashed line shows the overall unemployment rate. Bars to the right of
+the line are groups with higher-than-average unemployment.
+
+```{r cat-plots-1, fig.height = 6.5, fig.width = 9}
+plot_rate(model, "sex", "Sex") +
+  plot_rate(model, "residence", "Residence") +
+  plot_rate(model, "education_level", "Education level") +
+  plot_rate(model, "current_student", "Currently a student") +
+  plot_layout(ncol = 2)
+```
+
+```{r cat-plots-2, fig.height = 6.5, fig.width = 9}
+plot_rate(model, "province", "Province") +
+  plot_rate(model, "marital_status", "Marital status") +
+  plot_rate(model, "tvet_training", "TVET training") +
+  plot_rate(model, "disability", "Disability") +
+  plot_layout(ncol = 2)
+```
+
+```{r cat-plots-3, fig.height = 4.5, fig.width = 9}
+plot_rate(model, "household_relationship", "Relationship to household head")
+```
+
+```{r age-plot, fig.height = 3.5}
+model %>%
+  group_by(age) %>%
+  summarise(rate = mean(employment_status == "Unemployed")) %>%
+  ggplot(aes(x = age, y = rate)) +
+  geom_line(colour = status_colours["Unemployed"], linewidth = 1) +
+  geom_point(colour = status_colours["Unemployed"]) +
+  scale_y_continuous(labels = percent) +
+  labs(title = "Unemployment rate by age", x = "Age", y = "Unemployment rate")
+```
+
+```{r district-plot, fig.height = 6.5}
+plot_rate(lfs, "district", "District (descriptive only)")
+```
+
+# Feature relevance
+
+## Association with the outcome
+
+We run a chi-square test for each predictor and report Cramér's V, which
+measures the strength of the association. Numeric predictors are grouped
+into bands first.
+
+```{r association-outcome}
+# Put numeric predictors into bands so Cramer's V can be computed
+model_banded <- model %>%
+  mutate(
+    age                = cut(age, c(15, 20, 25, 30)),
+    years_of_schooling = cut(years_of_schooling, c(-1, 0, 6, 9, 12, 25)),
+    household_size     = cut(household_size, c(0, 2, 4, 6, 10))
+  )
+
+predictors <- names(model)[-(1:2)]
+
+relevance <- map_dfr(predictors, function(v) {
+  tab <- table(model_banded[[v]], model_banded$employment_status)
+  tibble(
+    Variable      = v,
+    `Chi-square`  = round(chisq.test(tab)$statistic, 1),
+    `p-value`     = format.pval(chisq.test(tab)$p.value, digits = 3),
+    `Cramer's V`  = round(cramers_v(model_banded[[v]],
+                                    model_banded$employment_status), 3)
+  )
+}) %>%
+  arrange(desc(`Cramer's V`))
+
+relevance %>%
+  kable(caption = "Association of each predictor with employment status",
+        booktabs = TRUE)
+```
+
+```{r relevance-plot, fig.height = 4}
+ggplot(relevance, aes(x = `Cramer's V`,
+                      y = fct_reorder(Variable, `Cramer's V`))) +
+  geom_col(fill = status_colours["Employed"], width = 0.7) +
+  labs(title = "Strength of association with employment status",
+       x = "Cramer's V", y = NULL)
+```
+
+## Association between predictors
+
+Predictors that are strongly linked to each other carry the same
+information. This matters most for logistic regression.
+
+```{r association-matrix, fig.height = 8, fig.width = 9}
+pairs <- expand_grid(var1 = predictors, var2 = predictors)
+
+pairs$v <- map2_dbl(pairs$var1, pairs$var2,
+                    ~ cramers_v(model_banded[[.x]], model_banded[[.y]]))
+
+ggplot(pairs, aes(x = var1, y = var2, fill = v)) +
+  geom_tile(colour = "white") +
+  geom_text(aes(label = sprintf("%.2f", v)), size = 2.5) +
+  scale_fill_gradient(low = "white", high = "#2C7FB8", limits = c(0, 1)) +
+  labs(title = "Cramer's V between predictors", x = NULL, y = NULL,
+       fill = "V") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r strong-pairs}
+pairs %>%
+  filter(var1 < var2, v >= 0.5) %>%
+  arrange(desc(v)) %>%
+  mutate(v = round(v, 2)) %>%
+  rename(`Variable 1` = var1, `Variable 2` = var2, `Cramer's V` = v) %>%
+  kable(caption = "Strongly related predictor pairs (V >= 0.5)",
+        booktabs = TRUE)
+```
+
+# Employed youth: job quality (descriptive only)
+
+These variables only exist for employed youth. They describe the
+*quality* of youth jobs and are not used for prediction.
+
+```{r job-quality, fig.height = 7, fig.width = 9}
+share_plot <- function(variable, title) {
+  lfs %>%
+    filter(employment_status == "Employed", !is.na(.data[[variable]])) %>%
+    count(category = .data[[variable]]) %>%
+    mutate(share = n / sum(n)) %>%
+    ggplot(aes(x = share, y = fct_reorder(category, share))) +
+    geom_col(fill = status_colours["Employed"], width = 0.7) +
+    geom_text(aes(label = percent(share, accuracy = 1)),
+              hjust = -0.15, size = 3) +
+    scale_x_continuous(labels = percent,
+                       expand = expansion(mult = c(0, 0.2))) +
+    labs(title = title, x = "Share of employed youth", y = NULL)
+}
+
+share_plot("formal_informal_work", "Formal vs informal work") +
+  share_plot("time_underemployment", "Time-related underemployment") +
+  share_plot("economic_sector", "Sector of employment") +
+  plot_layout(ncol = 1, heights = c(1, 1, 1.5))
+```
+
+# Key findings
+
+1. **Imbalanced outcome.** 14.7% of youth in the labour force are
+   unemployed. Models must be judged on recall, F1 and MCC for the
+   unemployed class, not on accuracy.
+2. **Education paradox.** Unemployment rises with education: about 13% for
+   youth with no or primary schooling, 22.5% for upper secondary and 17.8%
+   for university graduates. Educated youth often wait for a suitable job,
+   while less educated youth take any (often informal) work.
+3. **Gender gap.** Young women are more often unemployed (17.4%) than young
+   men (12.3%).
+4. **Household position matters most.** Household heads have the lowest rate
+   (8%), while sons, daughters and grandchildren of the head are near 19%.
+   Domestic workers are almost never unemployed, because living in as a
+   domestic worker already means having a job.
+5. **Age.** Unemployment peaks between ages 18 and 23, then falls.
+6. **Weak signals.** No single predictor is strongly associated with the
+   outcome (all Cramér's V < 0.2). Residence and disability show no
+   significant association. Prediction will therefore be modest.
+7. **Redundant predictors.** Education level and years of schooling are
+   strongly related (V = 0.68), and so are province and residence. Keep only
+   one of each pair for logistic regression. Tree-based models can use both.

@@ -1,0 +1,8 @@
+"Model","Best hyper-parameters"
+"Baseline (majority)","parameter = none"
+"Logistic regression","parameter = none"
+"Elastic net","alpha = 0.5, lambda = 0.00464"
+"Decision tree","cp = 5e-04"
+"Naive Bayes","laplace = 0, usekernel = TRUE, adjust = 1"
+"Random forest","mtry = 6, splitrule = gini, min.node.size = 60"
+"XGBoost","nrounds = 100, max_depth = 2, eta = 0.1, gamma = 0, colsample_bytree = 0.8, min_child_weight = 5, subsample = 0.8"

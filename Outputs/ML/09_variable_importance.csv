@@ -1,0 +1,75 @@
+"feature","importance"
+"household_relationshipDomestic worker",100
+"years_of_schooling",75.7209616133815
+"household_relationshipChild (Son/daughter)",61.7504575526651
+"sexFemale",48.6887824825937
+"household_size",32.2207012016672
+"age",25.1792665371962
+"household_relationshipSpouse (Wife/Husband)",18.2873139845187
+"districtNyabihu",15.8189442926389
+"districtGicumbi",14.4810250848377
+"districtGakenke",7.63937250736305
+"provinceSouthern Province",7.3767964894291
+"household_relationshipGrand child",7.23116521257285
+"field_of_educationServices",6.9341463723547
+"districtNyaruguru",6.29285903649695
+"districtKamonyi",6.1480705555267
+"districtKayonza",5.45761918674726
+"districtNyamasheke",4.54025136777222
+"field_of_educationNo education",4.19728229990334
+"districtRutsiro",3.47096324823644
+"districtRusizi",2.96721912046611
+"education_levelUpper secondary",2.95047524668081
+"districtKicukiro",2.60164747898234
+"lighting_sourceTorch or phone light",2.39563086344467
+"household_relationshipBrother or Sister",1.93860400623635
+"marital_statusLiving together",1.88219540511065
+"current_studentNo",1.40024311795617
+"field_of_educationScience",1.39817018771817
+"residenceRural",1.34079605914281
+"tvet_trainingNo",1.33336275445765
+"districtNgororero",1.15338848481874
+"education_levelPrimary",0.995230719554887
+"marital_statusSingle",0.968756581700314
+"provinceEastern Province",0.895303091480542
+"tvet_trainingNot stated",0.852298714973986
+"districtMusanze",0.829901437792869
+"lighting_sourceTraditional (candle, firewood, lamp)",0.547146412925411
+"field_of_educationAgriculture",0.471435102358453
+"districtRuhango",0.46534638361265
+"districtBugesera",0.427911788613563
+"lighting_sourceSolar or mini-grid",0.393813613002636
+"districtKarongi",0.344757895090121
+"field_of_educationSocial science and business",0.205390156053853
+"education_levelLower secondary",0
+"education_levelUniversity",0
+"provinceWestern Province",0
+"provinceNorthern Province",0
+"districtGasabo",0
+"districtNyanza",0
+"districtGisagara",0
+"districtHuye",0
+"districtNyamagabe",0
+"districtMuhanga",0
+"districtRubavu",0
+"districtRulindo",0
+"districtBurera",0
+"districtRwamagana",0
+"districtNyagatare",0
+"districtGatsibo",0
+"districtKirehe",0
+"districtNgoma",0
+"marital_statusPreviously married",0
+"disabilityYes",0
+"household_relationshipOther relative",0
+"household_relationshipNon relative",0
+"household_relationshipOther",0
+"field_of_educationEducation",0
+"field_of_educationHumanity and art",0
+"field_of_educationEngineering and construction",0
+"field_of_educationHealth and welfare",0
+"education_trackGeneral education",0
+"education_trackTVET",0
+"lived_outside_districtNo",0
+"migration_statusInternational migrant",0
+"migration_statusNon-migrant",0

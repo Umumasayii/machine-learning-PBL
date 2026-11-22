@@ -1,0 +1,2 @@
+"parameter","ROC","PR_AUC","Sens","Spec","Precision","F1","BalAcc","MCC","ROCSD","PR_AUCSD","SensSD","SpecSD","PrecisionSD","F1SD","BalAccSD","MCCSD"
+"none",0.5,0.148173744401313,0,1,0,0,0.5,0,0,0.0102914251535124,0,0,0,0,0,0

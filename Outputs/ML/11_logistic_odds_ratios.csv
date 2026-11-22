@@ -1,0 +1,71 @@
+"term","odds_ratio","lower","upper","p_value"
+"`household_relationshipChild (Son/daughter)`",0.296,0.219,0.402,5.26e-15
+"`household_relationshipGrand child`",0.277,0.183,0.419,1.32e-09
+"sexFemale",0.684,0.6,0.781,1.69e-08
+"districtNyabihu",3.914,2.395,6.396,5.17e-08
+"districtGakenke",5.177,2.739,9.788,4.18e-07
+"`household_relationshipBrother or Sister`",0.356,0.228,0.557,5.87e-06
+"`household_relationshipSpouse (Wife/Husband)`",0.581,0.455,0.742,1.38e-05
+"districtRulindo",2.455,1.612,3.738,2.82e-05
+"districtMusanze",2.136,1.468,3.107,7.33e-05
+"`provinceNorthern Province`",0.46,0.308,0.686,0.000137
+"districtBurera",2.186,1.447,3.303,0.000202
+"districtNgororero",2.662,1.495,4.74,0.000876
+"age",1.031,1.013,1.05,0.000909
+"`household_relationshipOther relative`",0.441,0.257,0.757,0.00296
+"field_of_educationServices",0.472,0.287,0.778,0.00322
+"districtKarongi",2.086,1.27,3.427,0.00369
+"`provinceSouthern Province`",0.603,0.423,0.861,0.00529
+"districtKayonza",1.775,1.176,2.681,0.00636
+"`household_relationshipNon relative`",0.549,0.356,0.847,0.00664
+"`marital_statusLiving together`",0.757,0.607,0.944,0.0133
+"districtRuhango",1.734,1.099,2.735,0.018
+"`provinceWestern Province`",0.605,0.392,0.933,0.0229
+"marital_statusSingle",1.497,1.057,2.121,0.0232
+"districtHuye",1.63,1.066,2.492,0.0242
+"`lighting_sourceTorch or phone light`",0.843,0.723,0.983,0.0293
+"`lighting_sourceSolar or mini-grid`",0.842,0.72,0.985,0.0312
+"districtRubavu",1.584,1.041,2.41,0.0316
+"household_relationshipOther",0.509,0.265,0.977,0.0424
+"districtGisagara",1.619,1.017,2.577,0.0425
+"years_of_schooling",0.941,0.886,1.001,0.052
+"districtNyanza",1.434,0.957,2.148,0.0809
+"districtKirehe",1.553,0.93,2.593,0.0921
+"field_of_educationScience",0.759,0.536,1.076,0.122
+"`field_of_educationEngineering and construction`",0.724,0.478,1.097,0.128
+"`lighting_sourceTraditional (candle, firewood, lamp)`",0.751,0.505,1.117,0.157
+"districtKicukiro",0.796,0.577,1.099,0.166
+"`field_of_educationNo education`",1.623,0.811,3.25,0.171
+"current_studentNo",0.86,0.693,1.068,0.173
+"districtNyagatare",1.268,0.869,1.85,0.219
+"districtMuhanga",1.267,0.857,1.873,0.235
+"districtRwamagana",1.264,0.857,1.864,0.238
+"`marital_statusPreviously married`",1.321,0.819,2.131,0.254
+"districtNyamagabe",1.251,0.845,1.853,0.263
+"districtRusizi",1.266,0.831,1.929,0.273
+"`provinceEastern Province`",0.854,0.605,1.207,0.372
+"`migration_statusInternational migrant`",0.764,0.422,1.38,0.372
+"`field_of_educationHealth and welfare`",1.583,0.563,4.452,0.384
+"tvet_trainingNo",1.095,0.882,1.36,0.409
+"districtNgoma",1.18,0.786,1.772,0.425
+"districtRutsiro",1.192,0.765,1.856,0.438
+"field_of_educationEducation",1.246,0.681,2.277,0.476
+"lived_outside_districtNo",1.063,0.898,1.259,0.477
+"field_of_educationAgriculture",1.312,0.605,2.846,0.492
+"districtGasabo",1.123,0.801,1.574,0.5
+"districtNyaruguru",0.866,0.567,1.323,0.505
+"residenceRural",1.055,0.9,1.238,0.509
+"education_levelPrimary",1.176,0.72,1.92,0.517
+"`tvet_trainingNot stated`",0.901,0.644,1.261,0.544
+"education_levelUniversity",1.325,0.532,3.299,0.545
+"education_trackTVET",1.154,0.705,1.887,0.569
+"`field_of_educationSocial science and business`",0.88,0.559,1.384,0.579
+"`education_levelLower secondary`",1.167,0.658,2.067,0.598
+"`field_of_educationHumanity and art`",0.899,0.603,1.342,0.603
+"household_size",0.992,0.959,1.026,0.651
+"`migration_statusNon-migrant`",0.966,0.797,1.17,0.724
+"disabilityYes",1.064,0.627,1.807,0.817
+"districtGatsibo",1.044,0.707,1.542,0.827
+"`household_relationshipDomestic worker`",2980233.629,0,3.58501486797471e+131,0.919
+"`education_trackGeneral education`",1.022,0.631,1.655,0.93
+"`education_levelUpper secondary`",0.99,0.493,1.99,0.978

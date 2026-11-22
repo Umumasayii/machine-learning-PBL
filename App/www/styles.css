@@ -1,0 +1,362 @@
+/* =============================================================================
+   Rwanda Youth Employment Dashboard - styles
+   Colours follow a navy / teal palette. Every colour that changes between
+   light and dark mode is a CSS variable defined at the top.
+   ========================================================================== */
+
+/* ---------- Colour tokens --------------------------------------------------- */
+:root,
+[data-bs-theme="light"] {
+  --navy: #051650;
+  --navy-2: #0B2265;
+  --teal: #2C7A7B;
+  --teal-dark: #1A5251;
+  --teal-light: #7FC9C8;
+  --coral: #B03A2E;
+  --gold: #D9822B;
+
+  --app-bg: #F2F5F9;
+  --card-bg: #FFFFFF;
+  --card-border: #E3E8EF;
+  --text: #1E293B;
+  --muted: #64748B;
+  --insight-bg: #EEF8F8;
+  --insight-border: #2C7A7B;
+  --table-head: #F1F5F9;
+  --table-total: #E6F2F2;
+  --shadow: 0 2px 6px rgba(5, 22, 80, .06);
+  --shadow-hover: 0 14px 28px rgba(5, 22, 80, .16);
+}
+
+[data-bs-theme="dark"] {
+  --app-bg: #0A1020;
+  --card-bg: #111A2E;
+  --card-border: #23304D;
+  --text: #E2E8F0;
+  --muted: #94A3B8;
+  --insight-bg: #0E2A2F;
+  --insight-border: #2C7A7B;
+  --table-head: #17223A;
+  --table-total: #133236;
+  --shadow: 0 2px 8px rgba(0, 0, 0, .35);
+  --shadow-hover: 0 16px 32px rgba(0, 0, 0, .55);
+}
+
+/* ---------- Page ------------------------------------------------------------ */
+body, .bslib-page-sidebar, .main {
+  background-color: var(--app-bg) !important;
+  color: var(--text);
+  font-family: Inter, "Segoe UI", -apple-system, Roboto, Arial, sans-serif;
+  font-size: 14px;
+}
+
+/* Top bar */
+.navbar, .bslib-page-title, .bslib-page-sidebar > .navbar {
+  background: var(--navy) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+}
+.app-title { display: flex; align-items: center; gap: .6rem; width: 100%; }
+.app-title .brand-icon {
+  width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--teal), var(--teal-dark)); color: #fff;
+}
+.app-title .brand-name { font-weight: 700; font-size: 1.1rem; color: #fff; }
+.app-title .brand-sub { font-size: .8rem; color: var(--teal-light); margin-left: .25rem; }
+.app-title .spacer { flex: 1; }
+.app-title .pill {
+  font-size: .75rem; padding: .25rem .6rem; border-radius: 999px;
+  background: rgba(255, 255, 255, .12); color: #fff;
+}
+.app-title bslib-input-dark-mode { --text-1: #fff; color: #fff; }
+
+/* ---------- Sidebar ---------------------------------------------------------- */
+.bslib-sidebar-layout > .sidebar {
+  background: var(--navy) !important;
+  color: #DCE3F1;
+  border-right: none !important;
+}
+.bslib-sidebar-layout > .sidebar .sidebar-title { color: #fff; }
+.bslib-sidebar-layout > .collapse-toggle { color: #fff; }
+
+.side-section {
+  font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--teal-light); margin: .6rem 0 .3rem; font-weight: 600;
+}
+
+/* Navigation menu (vertical button group) */
+.nav-menu .btn-group-vertical { width: 100%; }
+.nav-menu .btn {
+  text-align: left !important; border: none !important; border-radius: 8px !important;
+  background: transparent !important; color: #DCE3F1 !important;
+  padding: .5rem .7rem; margin-bottom: 2px; font-size: .9rem;
+  transition: background .15s, padding-left .15s;
+}
+.nav-menu .btn:hover { background: rgba(255, 255, 255, .08) !important; padding-left: 1rem; }
+.nav-menu .btn.active,
+.nav-menu .btn-check:checked + .btn {
+  background: linear-gradient(90deg, var(--teal), var(--teal-dark)) !important;
+  color: #fff !important; font-weight: 600;
+}
+.nav-menu .btn i, .nav-menu .btn svg { width: 1.2rem; margin-right: .45rem; }
+
+/* Filter panel */
+.filter-box {
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 10px; padding: .75rem;
+}
+.filter-box label { color: #C9D3E6; font-size: .72rem; text-transform: uppercase;
+  letter-spacing: .05em; font-weight: 600; }
+.filter-box .shiny-input-container,
+.filter-box .bootstrap-select,
+.filter-box .bootstrap-select > .dropdown-toggle { width: 100% !important; max-width: 100%; }
+.table-wrap { overflow-x: auto; }
+.nav-menu .shiny-input-container { width: 100%; margin-bottom: 0; }
+.filter-box .form-control, .filter-box .btn.dropdown-toggle {
+  background: #fff !important; color: #1E293B !important; border-radius: 6px;
+}
+.filter-box .irs--shiny .irs-bar { background: var(--teal); border-color: var(--teal); }
+.filter-box .irs--shiny .irs-single, .filter-box .irs--shiny .irs-from,
+.filter-box .irs--shiny .irs-to { background: var(--teal); }
+.filter-box .irs-grid-text, .filter-box .irs-min, .filter-box .irs-max { color: #C9D3E6; }
+.filter-box .form-check-label { color: #DCE3F1; text-transform: none; font-size: .85rem; }
+.filter-note { font-size: .78rem; color: var(--teal-light); margin-top: .4rem; }
+.btn-reset {
+  width: 100%; background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35);
+  border-radius: 6px; font-size: .82rem;
+}
+.btn-reset:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+
+/* ---------- Page banner and intro ----------------------------------------- */
+.page-banner {
+  background: linear-gradient(135deg, var(--navy), var(--teal));
+  color: #fff; border-radius: 14px; padding: 22px 30px; margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.page-banner h2 { margin: 0; font-weight: 700; font-size: 1.6rem; }
+.page-banner p { margin: 4px 0 0; opacity: .9; }
+
+.page-intro {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--teal-dark) 100%);
+  color: #fff; border-radius: 12px; padding: 16px 22px; margin-bottom: 16px;
+  border-left: 5px solid var(--teal);
+}
+.page-intro h5 { font-weight: 700; margin-bottom: .4rem; }
+.page-intro p { margin: 0; line-height: 1.6; }
+
+/* ---------- KPI cards ------------------------------------------------------- */
+.kpi-strip {
+  background: linear-gradient(135deg, var(--navy), var(--teal-dark));
+  border-radius: 16px; padding: 18px; margin-bottom: 16px;
+}
+.kpi-hero {
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 14px; padding: 18px 10px; text-align: center; color: #fff;
+  transition: transform .2s ease, background .2s ease;
+}
+.kpi-hero:hover { transform: translateY(-4px) scale(1.02); background: rgba(255, 255, 255, .14); }
+.kpi-hero .kpi-icon { font-size: 2.2rem; color: var(--teal-light); }
+.kpi-hero .kpi-value { font-size: 2.1rem; font-weight: 800; line-height: 1.1; margin-top: .3rem; }
+.kpi-hero .kpi-label { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+
+.kpi-card {
+  border-radius: 14px; padding: 14px 16px; color: #fff; position: relative;
+  border: 1px solid rgba(255, 255, 255, .2); box-shadow: 0 8px 16px rgba(0, 0, 0, .12);
+  transition: transform .2s ease, box-shadow .2s ease; min-height: 108px;
+}
+.kpi-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: var(--shadow-hover); }
+.kpi-card .kpi-title { padding-right: 2rem; line-height: 1.3; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; }
+.kpi-card .kpi-value { font-size: 1.8rem; font-weight: 800; margin-top: .2rem; }
+.kpi-card .kpi-sub { font-size: .76rem; opacity: .85; }
+.kpi-card .kpi-icon { position: absolute; top: 12px; right: 14px; font-size: 1.4rem; opacity: .8; }
+.kpi-navy  { background: linear-gradient(135deg, #0B2265, #051650); }
+.kpi-teal  { background: linear-gradient(135deg, #2C7A7B, #1A5251); }
+.kpi-mix   { background: linear-gradient(135deg, #051650, #2C7A7B); }
+.kpi-coral { background: linear-gradient(135deg, #B03A2E, #8E2B22); }
+
+/* ---------- Chart / table boxes --------------------------------------------- */
+.dash-box {
+  background: var(--card-bg) !important; border: 1px solid var(--card-border) !important;
+  border-radius: 12px !important; overflow: hidden; box-shadow: var(--shadow);
+  transition: transform .2s ease, box-shadow .2s ease; margin-bottom: 16px;
+}
+.dash-box:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+.dash-box > .card-header {
+  background: var(--navy) !important; color: #fff !important; font-weight: 600;
+  padding: 10px 14px; border-bottom: 3px solid var(--teal); display: flex; align-items: center; gap: .5rem;
+}
+.dash-box.teal > .card-header { background: var(--teal-dark) !important; border-bottom-color: var(--teal-light); }
+.dash-box > .card-body { background: var(--card-bg); color: var(--text); }
+.dash-box .insight {
+  background: var(--insight-bg) !important; border-top: 1px solid var(--card-border);
+  border-left: 4px solid var(--insight-border); color: var(--text);
+  font-size: .85rem; padding: 10px 14px;
+}
+.dash-box .insight .bi { color: var(--gold); margin-right: .35rem; }
+
+/* ---------- Summary tables with margins ------------------------------------ */
+.sum-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .86rem; color: var(--text); }
+.sum-table th {
+  background: var(--table-head); color: var(--muted); text-transform: uppercase;
+  font-size: .72rem; letter-spacing: .05em; padding: 9px 10px; border-bottom: 2px solid var(--teal);
+  white-space: nowrap;
+}
+.sum-table td { padding: 8px 10px; border-bottom: 1px solid var(--card-border); }
+.sum-table tbody tr { transition: background .15s; }
+.sum-table tbody tr:hover { background: var(--insight-bg); }
+.sum-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sum-table tfoot td, .sum-table td.margin {
+  background: var(--table-total); font-weight: 700;
+}
+.sum-table tfoot td { border-top: 2px solid var(--teal); border-bottom: none; }
+.rate-cell { display: flex; align-items: center; gap: .5rem; justify-content: flex-end; }
+.rate-bar { height: 8px; border-radius: 4px; background: var(--coral); min-width: 2px; }
+.rate-track { width: 48px; background: var(--card-border); border-radius: 4px; }
+.table-note { font-size: .78rem; color: var(--muted); margin-top: .5rem; }
+
+/* Heat cells for two-way tables */
+.heat { border-radius: 6px; padding: 4px 8px; display: inline-block; min-width: 56px; text-align: center; font-weight: 600; }
+
+/* ---------- Model & predictions --------------------------------------------- */
+.sum-table tr.best-row td { background: rgba(176, 58, 46, .10); font-weight: 600; }
+.sum-table td.top { color: var(--coral); font-weight: 700; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: .45rem; }
+.best-tag {
+  margin-left: .45rem; font-size: .66rem; text-transform: uppercase; letter-spacing: .05em;
+  background: var(--coral); color: #fff; padding: 2px 7px; border-radius: 999px; font-weight: 700;
+}
+
+/* Confusion matrix tiles */
+.cm-grid { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 8px; margin-top: .4rem; }
+.cm-head { text-align: center; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 700; align-self: end; }
+.cm-side { font-size: .78rem; color: var(--muted); font-weight: 700; align-self: center; text-align: right; }
+.cm-tile { border-radius: 10px; padding: 12px; text-align: center; color: #fff;
+  transition: transform .2s ease; }
+.cm-tile:hover { transform: scale(1.04); }
+.cm-tile.good { background: linear-gradient(135deg, #2C7A7B, #1A5251); }
+.cm-tile.bad  { background: linear-gradient(135deg, #B03A2E, #8E2B22); }
+.cm-tile.warn { background: linear-gradient(135deg, #D9822B, #B8691C); }
+.cm-n { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.cm-label { font-size: .78rem; font-weight: 600; }
+.cm-share { font-size: .72rem; opacity: .85; }
+
+/* Metric chips */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip { flex: 1 1 90px; border: 1px solid var(--card-border); border-radius: 10px; padding: 8px 10px;
+  text-align: center; background: var(--table-head); }
+.chip-v { display: block; font-size: 1.15rem; font-weight: 800; color: var(--text); }
+.chip-l { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+/* Risk calculator */
+.calc-box:hover { transform: none; }
+.calc-group { background: var(--table-head); border: 1px solid var(--card-border); border-radius: 10px;
+  padding: 10px 12px; height: 100%; }
+.calc-group h6, .calc-result h6 { color: var(--teal); font-weight: 700; text-transform: uppercase;
+  font-size: .74rem; letter-spacing: .06em; }
+.calc-group .shiny-input-container { width: 100%; margin-bottom: .5rem; }
+.calc-group label { font-size: .8rem; color: var(--muted); }
+.calc-result { border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 14px;
+  background: var(--card-bg); }
+.verdict { border-radius: 10px; padding: 10px 14px; border-left: 5px solid; }
+.verdict p { margin: .3rem 0 0; }
+.verdict-title { font-weight: 700; }
+.verdict.risk { background: rgba(176, 58, 46, .12); border-color: var(--coral); }
+.verdict.risk .verdict-title { color: var(--coral); }
+.verdict.safe { background: rgba(44, 122, 123, .12); border-color: var(--teal); }
+.verdict.safe .verdict-title { color: var(--teal); }
+
+/* ---------- Misc ------------------------------------------------------------ */
+.muted { color: var(--muted); }
+.dataTables_wrapper, table.dataTable { color: var(--text) !important; }
+.glossary dt { color: var(--teal); }
+.form-select, .form-control { border-radius: 8px; }
+
+/* =============================================================================
+   REVAMP: equal cards, 2px black borders, strong fonts, numbers on/off
+   (these rules come last, so they win over the rules above)
+   ========================================================================== */
+
+/* ---------- Strong, well visible fonts (semi-bold everywhere) -------------- */
+body, .bslib-page-sidebar, .main { font-weight: 600; font-size: 15px; }
+h1, h2, h3, h4, h5, h6, .card-header, th, b, strong { font-weight: 800 !important; }
+.form-label, label, .control-label { font-weight: 700; }
+.dash-box > .card-header { font-size: 1rem; letter-spacing: .01em; }
+.dash-box .insight { font-size: .9rem; font-weight: 600; }
+.sum-table { font-size: .9rem; }
+.sum-table td { font-weight: 600; }
+.table-note, .muted { font-weight: 600; }
+
+/* Chart text: axis numbers, axis titles, legend and bar numbers */
+.js-plotly-plot .plotly .xtick text,
+.js-plotly-plot .plotly .ytick text,
+.js-plotly-plot .plotly .g-xtitle text,
+.js-plotly-plot .plotly .g-ytitle text,
+.js-plotly-plot .plotly .legendtext,
+.js-plotly-plot .plotly .bartext,
+.js-plotly-plot .plotly .slicetext,
+.js-plotly-plot .plotly .number {
+  font-weight: 700 !important;
+}
+[data-bs-theme="light"] .js-plotly-plot .plotly .xtick text,
+[data-bs-theme="light"] .js-plotly-plot .plotly .ytick text,
+[data-bs-theme="light"] .js-plotly-plot .plotly .g-xtitle text,
+[data-bs-theme="light"] .js-plotly-plot .plotly .g-ytitle text,
+[data-bs-theme="light"] .js-plotly-plot .plotly .legendtext,
+[data-bs-theme="light"] .js-plotly-plot .plotly .bartext,
+[data-bs-theme="light"] .js-plotly-plot .plotly .number {
+  fill: #111827 !important;
+}
+[data-bs-theme="dark"] .js-plotly-plot .plotly .xtick text,
+[data-bs-theme="dark"] .js-plotly-plot .plotly .ytick text,
+[data-bs-theme="dark"] .js-plotly-plot .plotly .g-xtitle text,
+[data-bs-theme="dark"] .js-plotly-plot .plotly .g-ytitle text,
+[data-bs-theme="dark"] .js-plotly-plot .plotly .legendtext,
+[data-bs-theme="dark"] .js-plotly-plot .plotly .bartext,
+[data-bs-theme="dark"] .js-plotly-plot .plotly .number {
+  fill: #F1F5F9 !important;
+}
+
+/* ---------- Numbers on charts: switched off from the top bar ---------------- */
+body.no-labels .js-plotly-plot .bartext,
+body.no-labels .js-plotly-plot .slicetext,
+body.no-labels .js-plotly-plot .textpoint {
+  display: none !important;
+}
+
+/* ---------- 2px black border around every chart / table card --------------- */
+.dash-box { border: 2px solid #000 !important; }
+.dash-box > .card-header { border-bottom: 2px solid #000 !important; }
+
+/* ---------- Equal-sized cards ----------------------------------------------- */
+/* Every card in a row stretches to the height of the tallest one */
+.bslib-grid { align-items: stretch; margin-bottom: 16px; }
+.bslib-grid-item > .dash-box,
+.bslib-grid-item > .card { height: 100%; margin-bottom: 0 !important; }
+.dash-box { display: flex; flex-direction: column; }
+.dash-box > .card-body { flex: 1 1 auto; }
+.dash-box > .card-footer { margin-top: auto; }
+
+/* KPI cards: same height, value always on the same line */
+.bslib-grid-item > .kpi-card,
+.bslib-grid-item > .kpi-hero { flex: 1 1 auto; height: 100%; }
+.kpi-card { min-height: 128px; display: flex; flex-direction: column; justify-content: space-between; }
+.kpi-card .kpi-title { min-height: 2.6em; font-size: .78rem; }
+.kpi-card .kpi-value { font-size: 2rem; }
+.kpi-card .kpi-sub { font-size: .8rem; font-weight: 600; }
+.kpi-hero { min-height: 150px; display: flex; flex-direction: column; justify-content: center; }
+.kpi-hero .kpi-label { font-weight: 700; }
+
+/* ---------- Interactivity --------------------------------------------------- */
+/* Lift effect on hover, and a stronger shadow so the active card stands out */
+.dash-box:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(0, 0, 0, .22); }
+.calc-box:hover { transform: none; }
+/* Chart toolbar (zoom, reset, download PNG) only shows when hovering a chart */
+.js-plotly-plot .modebar { opacity: 0; transition: opacity .2s; }
+.js-plotly-plot:hover .modebar { opacity: 1; }
+
+/* Switches in the top bar */
+.top-switch .shiny-input-container { margin: 0 .4rem 0 0; width: auto; }
+.top-switch .form-check { margin: 0; padding-top: .1rem; }
+.top-switch .form-check-label { color: #fff; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.top-switch .form-check-input:checked { background-color: var(--teal); border-color: var(--teal); }

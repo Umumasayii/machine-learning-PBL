@@ -1,0 +1,9 @@
+Model,Parameters_tuned,Combinations_tried,Best_values,Best_CV_ROC
+Decision tree,cp (tree complexity),10,cp = 0.00085,0.637
+RDA,"gamma, lambda",9,"gamma = 0.1 , lambda = 0.5",0.668
+Lasso,lambda (alpha fixed at 1),10,lambda = 0.01,0.668
+Elastic net,"alpha, lambda",50,"alpha = 0 , lambda = 0.1",0.667
+KNN,k (number of neighbours),8,k = 41,0.625
+Random forest,"mtry, min.node.size",12,"mtry = 4 , min.node.size = 30",0.673
+GBM,"n.trees, interaction.depth",9,"n.trees = 100 , depth = 3",0.673
+Naive Bayes,laplace fixed at 1,1,laplace = 1,0.649

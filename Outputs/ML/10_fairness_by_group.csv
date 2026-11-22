@@ -1,0 +1,10 @@
+"Variable","Group","Recall","Specificity","Precision","F1","ROC AUC"
+"sex","Male",0.433,0.769,0.214,0.287,0.652
+"sex","Female",0.884,0.321,0.205,0.332,0.641
+"residence","Urban",0.694,0.635,0.239,0.355,0.721
+"residence","Rural",0.668,0.507,0.191,0.297,0.61
+"education_level","None",0.495,0.651,0.166,0.249,0.615
+"education_level","Primary",0.65,0.567,0.188,0.292,0.628
+"education_level","Lower secondary",0.756,0.529,0.212,0.332,0.649
+"education_level","Upper secondary",0.876,0.352,0.27,0.412,0.693
+"education_level","University",0.853,0.497,0.264,0.403,0.714

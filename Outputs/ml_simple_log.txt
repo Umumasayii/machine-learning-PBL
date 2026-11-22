@@ -1,0 +1,29 @@
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:stats':
+
+    filter, lag
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+Loading required package: lattice
+Type 'citation("pROC")' for a citation.
+
+Attaching package: 'pROC'
+
+The following objects are masked from 'package:stats':
+
+    cov, smooth, var
+
+Rows:  15958 
+ Predictors:  17 
+Train Obs:  11172 
+ Test Obs:  4786 
+Accuracy if we always predict 'Employed':  0.8526954 
+The best model is Random_forest with ROC AUC = 0.676 
+Saved: Outputs/ML_simple/dashboard_model.rds
+Random forest ROC AUC: 0.676  95% CI: 0.656 to 0.696 
+Done. All results are in Outputs/ML_simple/

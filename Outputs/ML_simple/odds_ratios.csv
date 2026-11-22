@@ -1,0 +1,71 @@
+Term,Odds_ratio,Lower_95,Upper_95,p_value
+districtNyabihu,0.291,0.168,0.504,0
+household_relationshipHousehold Head,0.305,0.171,0.544,0
+districtKayonza,0.387,0.226,0.662,0.001
+districtGakenke,0.339,0.162,0.707,0.004
+marital_statusSingle,0.564,0.382,0.833,0.004
+sexMale,0.772,0.643,0.928,0.006
+districtNgoma,0.468,0.27,0.813,0.007
+districtNyagatare,0.527,0.321,0.864,0.011
+household_relationshipNon relative,0.481,0.25,0.925,0.028
+districtNyarugenge,0.623,0.399,0.973,0.038
+districtKirehe,0.485,0.242,0.971,0.041
+districtRulindo,0.605,0.36,1.019,0.059
+field_of_educationNo education,0.29,0.077,1.09,0.067
+districtRwamagana,0.642,0.38,1.085,0.098
+districtRuhango,0.617,0.335,1.135,0.121
+districtNyaruguru,1.652,0.872,3.132,0.124
+education_trackNo level completed,0.627,0.333,1.181,0.148
+districtRubavu,0.714,0.451,1.132,0.152
+lighting_sourceTorch or phone light,1.151,0.932,1.42,0.192
+districtGatsibo,0.695,0.399,1.212,0.199
+districtNyamagabe,0.701,0.404,1.218,0.208
+field_of_educationGeneral education,0.511,0.179,1.457,0.209
+districtNgororero,0.663,0.347,1.266,0.213
+districtGasabo,0.751,0.465,1.214,0.243
+field_of_educationEducation,0.516,0.163,1.64,0.262
+household_relationshipSpouse (Wife/Husband),0.701,0.366,1.342,0.283
+field_of_educationServices,1.84,0.596,5.678,0.289
+lived_outside_districtYes,1.128,0.892,1.428,0.315
+education_trackTVET,0.843,0.592,1.201,0.345
+education_levelNone,1.441,0.673,3.087,0.347
+districtGicumbi,1.303,0.74,2.295,0.36
+"lighting_sourceTraditional (candle, firewood, lamp)",1.265,0.761,2.105,0.365
+districtGisagara,0.756,0.411,1.393,0.37
+education_levelUpper secondary,1.233,0.777,1.959,0.374
+field_of_educationHumanity and art,0.642,0.229,1.805,0.401
+districtNyamasheke,0.785,0.422,1.459,0.444
+districtRutsiro,0.822,0.483,1.4,0.471
+education_levelPrimary,0.887,0.618,1.274,0.517
+lighting_sourceSolar or mini-grid,1.073,0.863,1.334,0.528
+districtKicukiro,1.15,0.716,1.848,0.563
+household_relationshipGrand child,1.203,0.617,2.347,0.587
+migration_statusNon-migrant,1.075,0.825,1.402,0.59
+districtKarongi,0.861,0.477,1.556,0.62
+marital_statusMarried,0.933,0.698,1.245,0.636
+field_of_educationScience,0.796,0.303,2.091,0.643
+household_relationshipChild (Son/daughter),1.129,0.668,1.91,0.65
+tvet_trainingNot stated,1.093,0.739,1.617,0.656
+field_of_educationEngineering and construction,0.811,0.298,2.206,0.682
+districtKamonyi,1.108,0.674,1.823,0.685
+districtNyanza,0.898,0.518,1.556,0.701
+household_size,1.009,0.962,1.058,0.71
+household_relationshipOther relative,0.882,0.405,1.921,0.752
+migration_statusInternational migrant,1.124,0.544,2.324,0.752
+years_of_schooling,0.988,0.911,1.071,0.766
+districtBurera,0.924,0.548,1.559,0.767
+tvet_trainingYes,0.956,0.71,1.288,0.769
+districtMuhanga,1.059,0.635,1.768,0.825
+current_studentYes,1.032,0.755,1.411,0.842
+disabilityYes,0.933,0.453,1.92,0.85
+districtMusanze,1.045,0.656,1.666,0.852
+education_levelUniversity,0.936,0.436,2.007,0.864
+districtHuye,1.048,0.603,1.819,0.869
+field_of_educationSocial science and business,0.93,0.338,2.561,0.888
+residenceUrban,0.985,0.792,1.225,0.891
+household_relationshipOther,1.066,0.424,2.679,0.891
+field_of_educationHealth and welfare,0.904,0.176,4.647,0.904
+age,0.999,0.975,1.024,0.939
+household_relationshipDomestic worker,0,0,2403403514102331e167,0.94
+districtRusizi,1.009,0.623,1.635,0.97
+marital_statusPreviously married,1.007,0.548,1.85,0.983

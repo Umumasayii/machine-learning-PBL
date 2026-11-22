@@ -1,0 +1,20 @@
+,holdout_value
+Accuracy,0.8521612027563166
+Balanced accuracy,0.502098107332344
+Precision (unemployed),0.4
+Recall / sensitivity (unemployed),0.0056657223796034
+Specificity (employed),0.9985304922850845
+F1 (unemployed),0.0111731843575419
+F2 (unemployed; recall priority),0.007057163020465773
+Negative predictive value,0.8531073446327684
+False positive rate,0.0014695077149155032
+False negative rate,0.9943342776203966
+Cohen's Kappa,0.007084447599335242
+Matthews correlation coefficient,0.032589764517225894
+Geometric mean (sens. & spec.),0.07521566696411063
+ROC AUC,0.6727205805318675
+Average precision / PR-AUC summary,0.2453775645022997
+Log loss (lower is better),0.3919258869077017
+Brier score (lower is better),0.12011771048653164
+Actual unemployed prevalence,0.14742117352265607
+Predicted unemployed proportion,0.0020881186051367718
