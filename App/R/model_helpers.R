@@ -4,18 +4,14 @@
 #  Scripts/ml_script_simple.R  (the app uses the model with the highest ROC AUC)
 # =============================================================================
 
-# One colour per model. The model used in the app is turned coral in app.R.
-model_cols <- c("LDA" = "#4E79A7", "RDA" = "#1F4E79", "Lasso" = "#2C7A7B",
-                "Elastic net" = "#59A14F", "Logistic" = "#6B7280",
-                "Random forest" = "#1A5251", "GBM" = "#D9822B",
-                "Naive Bayes" = "#7A3E9D", "Decision tree" = "#9C755F", "KNN" = "#B07AA1")
-
-model_full_name <- c(
-  "LDA" = "Linear Discriminant Analysis (LDA)", "RDA" = "Regularized Discriminant Analysis (RDA)",
-  "Lasso" = "Lasso logistic regression", "Elastic net" = "Elastic net logistic regression",
-  "Logistic" = "Logistic regression", "Random forest" = "Random forest",
-  "GBM" = "Gradient boosting (GBM)", "Naive Bayes" = "Naive Bayes",
-  "Decision tree" = "Decision tree", "KNN" = "k-nearest neighbours (KNN)")
+# One colour per model, made from the model names saved by the training script
+# (no model names are typed here). The model used in the app is drawn in coral.
+make_model_cols <- function(ml) {
+  models <- clean_model(ml$results$Model[ml$results$Model != ml$baseline])
+  cols <- setNames(grDevices::hcl.colors(length(models), "Dark 3"), models)
+  cols[[clean_model(ml$app_name)]] <- pal$coral
+  cols
+}
 
 clean_model <- function(x) gsub("_", " ", x)
 
@@ -72,8 +68,8 @@ metrics_at <- function(prob, actual, cutoff) {
 }
 
 # ROC curve points for every model on the test set
-roc_points <- function(test_probs) {
-  models <- setdiff(names(test_probs), "actual")
+roc_points <- function(test_probs, baseline) {
+  models <- setdiff(names(test_probs), c("actual", baseline))   # the dummy is the dashed line
   bind_rows(lapply(models, function(m) {
     r <- pROC::roc(test_probs$actual, test_probs[[m]], levels = c("Employed", "Unemployed"),
                    direction = "<", quiet = TRUE)
@@ -90,40 +86,68 @@ roc_points <- function(test_probs) {
 
 # Test-set results for all models; the app model is highlighted
 model_metrics_table <- function(ml, app_name = clean_model(ml$app_name)) {
+  model_cols <- make_model_cols(ml)
   d <- ml$results %>% mutate(Model = clean_model(Model))
-  cv <- data.frame(Model = clean_model(rownames(ml$cv_roc)), cv = ml$cv_roc[, "Mean"])
+  cv <- data.frame(Model = clean_model(rownames(ml$cv_roc)), CV_ROC = ml$cv_roc[, "Mean"])
   d <- left_join(d, cv, by = "Model")
-  best_auc <- max(d$ROC_AUC)
 
-  rows <- lapply(seq_len(nrow(d)), function(i) {
-    r <- d[i, ]; is_app <- r$Model == app_name
-    tags$tr(class = if (is_app) "best-row",
-      tags$td(span(class = "dot", style = paste0("background:", model_cols[[r$Model]])), r$Model,
-              if (is_app) span(class = "best-tag", "used in app")),
-      tags$td(class = "num muted", f3(r$cv)),
-      tags$td(class = paste("num", if (r$ROC_AUC == best_auc) "top"), f3(r$ROC_AUC)),
-      tags$td(class = "num", f3(r$Accuracy)),
-      tags$td(class = "num", f3(r$Sensitivity)), tags$td(class = "num", f3(r$Specificity)),
-      tags$td(class = "num", f3(r$Precision)), tags$td(class = "num", f3(r$F1)),
-      tags$td(class = "num", f3(r$Kappa)))
-  })
-  base_acc <- mean(ml$test_probs$actual == "Employed")
+  # Columns of the table: name in the data -> heading, and whether high or low is best
+  cols <- data.frame(
+    var  = c("CV_ROC", "ROC_AUC", "Accuracy", "Sensitivity", "Specificity",
+             "Precision", "F1", "Kappa", "MCC", "Train_time_sec"),
+    head = c("CV ROC", "Test ROC", "Accuracy", "Recall", "Specificity",
+             "Precision", "F1", "Kappa", "MCC", "TT (sec)"),
+    best = c(rep("high", 9), "low"))
+
+  baseline <- clean_model(ml$baseline)
+  models   <- d %>% filter(Model != baseline)   # the real models
+  dummy    <- d %>% filter(Model == baseline)   # the reference row (footer)
+
+  # Best value of each column among the real models (lowest for the time)
+  best_value <- function(var, best) {
+    if (best == "high") max(models[[var]], na.rm = TRUE) else min(models[[var]], na.rm = TRUE)
+  }
+  show_value <- function(var, x) if (var == "Train_time_sec") sprintf("%.1f", x) else f3(x)
+
+  value_cells <- function(r, highlight = TRUE) {
+    cells <- list()
+    for (j in seq_len(nrow(cols))) {
+      var <- cols$var[j]
+      top <- highlight && !is.na(r[[var]]) && r[[var]] == best_value(var, cols$best[j])
+      cells[[j]] <- tags$td(class = paste("num", if (top) "col-best"), show_value(var, r[[var]]))
+    }
+    cells
+  }
+
+  rows <- list()
+  for (i in seq_len(nrow(models))) {
+    r <- models[i, ]
+    is_app <- r$Model == app_name
+    name_cell <- tags$td(class = "model-cell",
+      span(class = "dot", style = paste0("background:", model_cols[[r$Model]])),
+      span(class = "model-name", r$Model),
+      if (is_app) span(class = "app-mark", title = "Model used in the app", bs_icon("trophy-fill")))
+    rows[[i]] <- tags$tr(class = if (is_app) "best-row",
+                         name_cell, tags$td(class = "method", r$Method), value_cells(r))
+  }
+
+  footer <- tags$tr(tags$td(class = "model-cell", span(class = "model-name", paste(baseline, "(always 'Employed')"))),
+                    tags$td(class = "method", dummy$Method), value_cells(dummy, highlight = FALSE))
+
+  heads <- list(tags$th("Model"), tags$th("caret method"))
+  for (h in cols$head) heads[[length(heads) + 1]] <- tags$th(class = "num", h)
+
   tagList(
-    div(class = "table-wrap", tags$table(class = "sum-table",
-      tags$thead(tags$tr(tags$th("Model"), tags$th(class = "num", "CV ROC"),
-                         tags$th(class = "num", "Test ROC"), tags$th(class = "num", "Accuracy"),
-                         tags$th(class = "num", "Recall"), tags$th(class = "num", "Specificity"),
-                         tags$th(class = "num", "Precision"), tags$th(class = "num", "F1"),
-                         tags$th(class = "num", "Kappa"))),
+    div(class = "table-wrap", tags$table(class = "sum-table model-table",
+      tags$thead(tags$tr(heads)),
       tags$tbody(rows),
-      tags$tfoot(tags$tr(tags$td("Always predict 'Employed'"), tags$td(class = "num", "0.500"),
-                         tags$td(class = "num", "0.500"), tags$td(class = "num", f3(base_acc)),
-                         tags$td(class = "num", "0.000"), tags$td(class = "num", "1.000"),
-                         tags$td(class = "num", "-"), tags$td(class = "num", "-"),
-                         tags$td(class = "num", "0.000"))))),
+      tags$tfoot(footer))),
     div(class = "table-note",
-        "Test set = 30% of youth, never used for training. CV ROC = mean over 5 folds.",
-        "Recall = share of unemployed youth the model finds. The footer row is the reference.")
+        span(class = "app-mark", bs_icon("trophy-fill")), "= model used in the app.",
+        span(class = "col-best legend-best", "Highlighted"), "= best value in each column (fastest for TT).",
+        "Sorted by test ROC AUC. Test set = 30% of youth, never used for training. CV ROC = mean over 5 folds.",
+        "Recall = share of unemployed youth the model finds. MCC = Matthews correlation (0 = guessing).",
+        "TT = training time in seconds, including tuning. The footer row is the reference model.")
   )
 }
 
@@ -155,7 +179,8 @@ metric_chips <- function(m) {
 
 # Grouped bars: test metrics of every model
 model_compare_chart <- function(ml) {
-  d <- ml$results %>% mutate(Model = clean_model(Model)) %>%
+  model_cols <- make_model_cols(ml)
+  d <- ml$results %>% filter(Model != ml$baseline) %>% mutate(Model = clean_model(Model)) %>%
     select(Model, `ROC AUC` = ROC_AUC, Recall = Sensitivity, Specificity, F1) %>%
     tidyr::pivot_longer(-Model, names_to = "metric", values_to = "value") %>%
     mutate(metric = factor(metric, c("ROC AUC", "Recall", "Specificity", "F1")),
@@ -169,7 +194,8 @@ model_compare_chart <- function(ml) {
     legend_right()
 }
 
-roc_chart <- function(points) {
+roc_chart <- function(points, ml) {
+  model_cols <- make_model_cols(ml)
   d <- points %>% mutate(name = sprintf("%s (AUC %.3f)", model, auc),
                          model = factor(model, names(model_cols)))
   plot_ly(d, x = ~fpr, y = ~tpr, color = ~model, colors = model_cols, type = "scatter",
@@ -183,7 +209,8 @@ roc_chart <- function(points) {
 
 # Cross-validated ROC: mean with min-max range over the 5 folds
 cv_chart <- function(ml) {
-  s <- ml$cv_roc
+  model_cols <- make_model_cols(ml)
+  s <- ml$cv_roc[rownames(ml$cv_roc) != ml$baseline, ]
   d <- data.frame(model = clean_model(rownames(s)), mean = s[, "Mean"],
                   lo = s[, "Min."], hi = s[, "Max."]) %>%
     arrange(mean) %>% mutate(model = factor(model, levels = model))
@@ -253,7 +280,7 @@ age_curve_chart <- function(curve, current_age, cutoff) {
     style_plot(x_title = "Age", y_title = "Risk score", legend = FALSE)
 }
 
-# With 10 models the legend is long: put it in one column on the right side
+# With many models the legend is long: put it in one column on the right side
 legend_right <- function(p) {
   layout(p, legend = list(orientation = "v", x = 1.02, xanchor = "left",
                           y = 1, yanchor = "top", font = list(size = 12)))

@@ -407,3 +407,18 @@ body.no-labels .js-plotly-plot .textpoint {
               border-top: 1px solid rgba(255, 255, 255, .2); padding-top: .45rem; }
 .snap-num   { font-size: 1.05rem; font-weight: 800; }
 .snap-small { font-size: .68rem; color: #D7F2F1; font-weight: 600; }
+
+/* ---------- Model comparison table (like PyCaret's compare_models) ---------- */
+.model-table td.model-cell { white-space: nowrap; }
+.model-table td.method { font-family: Consolas, "Courier New", monospace; font-size: .78rem; color: var(--muted); white-space: nowrap; }
+.model-table th { white-space: nowrap; }
+/* best value in each column */
+.col-best { background: rgba(250, 204, 21, .35) !important; font-weight: 700; border-radius: 4px; }
+[data-bs-theme="dark"] .col-best { background: rgba(250, 204, 21, .25) !important; }
+.legend-best { padding: 1px 6px; margin: 0 .2rem 0 .5rem; }
+/* trophy next to the model used in the app */
+.app-mark { color: var(--coral); margin-left: .4rem; font-size: .95rem; vertical-align: -1px; }
+.table-note .app-mark { margin: 0 .2rem 0 0; }
+.sum-table tr.best-row td:first-child { box-shadow: inset 4px 0 0 var(--coral); }
+.model-table tfoot td { font-style: italic; }
+.model-table th, .model-table td { padding-left: .45rem !important; padding-right: .45rem !important; }

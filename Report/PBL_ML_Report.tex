@@ -91,16 +91,19 @@ Youth unemployment is one of Rwanda's main social and economic challenges. This 
 aged 16--30 who are in the labour force as \emph{employed} or \emph{unemployed}. After cleaning, the
 analysis sample contains 15{,}958 youth, of whom 14.7\% are unemployed, so the two classes are
 strongly imbalanced. Seventeen demographic, educational, geographic and household predictors were
-used. Ten algorithms were trained in R with the \texttt{caret} package: logistic regression, Lasso,
-elastic net, linear and regularized discriminant analysis (LDA, RDA), naive Bayes, $k$-nearest
-neighbours (KNN), a decision tree, random forest and gradient boosting (GBM). The data were split
-70/30 into training and test sets, hyper-parameters were tuned with 5-fold cross-validation, and the
-training folds were down-sampled to balance the classes. Models were compared with ROC AUC, recall,
-specificity, precision, $F_1$ and Cohen's $\kappa$.
+used. Fifteen algorithms (the classifiers compared by PyCaret's \texttt{compare\_models()} plus a few
+more) were trained in R with the \texttt{caret} package: logistic regression, ridge, Lasso, elastic
+net, linear, quadratic and regularized discriminant analysis (LDA, QDA, RDA), naive Bayes,
+$k$-nearest neighbours (KNN), a linear support vector machine (SVM), a decision tree, random forest,
+extra trees, AdaBoost and gradient boosting (GBM), together with a dummy model that always predicts
+the majority class. The data were split 70/30 into training and test sets, hyper-parameters were
+tuned with 5-fold cross-validation, and the training folds were down-sampled to balance the classes.
+Models were compared with ROC AUC, accuracy, recall, specificity, precision, $F_1$, Cohen's $\kappa$,
+the Matthews correlation coefficient (MCC) and training time.
 
-The random forest achieved the highest test ROC AUC (0.676; 95\% CI 0.656--0.696) and found 62\% of
-unemployed youth at the default cut-off, although its advantage over GBM, LDA and Lasso was not
-statistically significant (DeLong test). The most informative factors were district, position in the
+The random forest achieved the highest test ROC AUC (0.687; 95\% CI 0.667--0.708) and found 64\% of
+unemployed youth at the default cut-off. It was significantly better than 12 of the other 14 models,
+but not than AdaBoost or GBM (DeLong test). The most informative factors were district, position in the
 household, age, years of schooling and household size. The results confirm an \emph{education
 paradox}: youth with upper secondary or university education face a higher risk of unemployment than
 youth with little schooling. Young women and youth who are not household heads are also more at
@@ -384,7 +387,7 @@ The data were split by \textbf{stratified random sampling} into a \textbf{70\% t
 youth)} and a \textbf{30\% test set (4{,}786 youth)}. Stratification keeps the same share of
 unemployed youth (14.7\%) in both sets, and a fixed random seed (123) makes the split reproducible.
 The test set was used only once, at the end, to evaluate the final models. Within the training set,
-\textbf{5-fold cross-validation} was used for tuning, and all ten models used exactly the same folds
+\textbf{5-fold cross-validation} was used for tuning, and all sixteen models used exactly the same folds
 so that their results are directly comparable.
 
 To deal with class imbalance, each training fold was \textbf{down-sampled}: the employed group was
@@ -401,7 +404,10 @@ P(\text{unemployed}) = \frac{s\,\pi}{s\,\pi+(1-s)(1-\pi)}.
 \section{Implementation of the ML Methodology}
 
 \subsection{Algorithms}
-Table~\ref{tab:algos} lists the ten algorithms and the reason each was included. As an example of the
+Table~\ref{tab:algos} lists the fifteen algorithms and the reason each was included. The list
+follows the classifiers compared by PyCaret's \texttt{compare\_models()} (Python), reproduced here in
+R with \texttt{caret}, plus RDA, Lasso and elastic net. A dummy model (caret method \texttt{null}),
+which always predicts ``Employed'', is the reference that every useful model must beat. As an example of the
 models' structure, the logistic regression models the log-odds of unemployment linearly,
 \begin{equation}
 \log\frac{P(Y=1\mid\mathbf{x})}{1-P(Y=1\mid\mathbf{x})}=\beta_0+\boldsymbol{\beta}^{\top}\mathbf{x},
@@ -414,23 +420,27 @@ a bootstrap sample with a random subset of $m_{\text{try}}$ predictors considere
 
 \begin{table}[H]
 \centering
-\caption{The ten algorithms implemented and their justification}
+\caption{The fifteen algorithms implemented (with their \texttt{caret} method) and their justification}
 \label{tab:algos}
 \small
 \rowcolors{2}{lightrow}{white}
 \begin{tabularx}{\textwidth}{@{}l l Y@{}}
 \toprule
-\textbf{Algorithm} & \textbf{Type} & \textbf{Why it was chosen} \\
+\textbf{Algorithm (caret method)} & \textbf{Type} & \textbf{Why it was chosen} \\
 \midrule
-Logistic regression & Linear, probabilistic & Standard baseline for binary outcomes; gives odds ratios \\
-Lasso / Elastic net & Penalized logistic & Shrinks weak predictors; handles many dummy variables and correlated inputs \\
-LDA & Linear discriminant & Simple and stable linear classifier \\
-RDA & Regularized discriminant & Compromise between LDA and QDA; robust with many categories \\
-Naive Bayes & Probabilistic & Very fast; useful simple benchmark \\
-$k$-nearest neighbours & Instance-based & Non-parametric; no assumption on the shape of the boundary \\
-Decision tree (CART) & Tree & Easy to interpret; captures interactions \\
-Random forest \cite{breiman} & Ensemble of trees & Robust; handles non-linear effects and interactions \\
-Gradient boosting (GBM) \cite{friedman} & Boosted trees & Often the most accurate method on tabular data \\
+Logistic regression (\texttt{glm}) & Linear, probabilistic & Standard baseline for binary outcomes; gives odds ratios \\
+Ridge / Lasso / Elastic net (\texttt{glmnet}) & Penalized logistic & Shrinks weak predictors; handles many dummy variables and correlated inputs \\
+LDA (\texttt{lda}) & Linear discriminant & Simple and stable linear classifier \\
+QDA (\texttt{rda}, $\lambda=0$) & Quadratic discriminant & Curved boundary; plain QDA failed (rank deficiency), so a small covariance shrinkage $\gamma$ was added \\
+RDA (\texttt{rda}) & Regularized discriminant & Compromise between LDA and QDA; robust with many categories \\
+Naive Bayes (\texttt{naive\_bayes}) & Probabilistic & Very fast; useful simple benchmark \\
+$k$-nearest neighbours (\texttt{knn}) & Instance-based & Non-parametric; no assumption on the shape of the boundary \\
+Linear SVM (\texttt{svmLinear}) & Maximum margin & Widest possible linear boundary between the classes \\
+Decision tree (\texttt{rpart}) & Tree & Easy to interpret; captures interactions \\
+Random forest (\texttt{ranger}) \cite{breiman} & Ensemble of trees & Robust; handles non-linear effects and interactions \\
+Extra trees (\texttt{ranger}) & Ensemble of trees & Random split points; faster, lower variance than random forest \\
+AdaBoost (\texttt{gbm}, AdaBoost loss) & Boosted trees & Classic boosting: re-weights the youth that earlier trees misclassified \\
+Gradient boosting (\texttt{gbm}) \cite{friedman} & Boosted trees & Often the most accurate method on tabular data \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -438,8 +448,8 @@ Gradient boosting (GBM) \cite{friedman} & Boosted trees & Often the most accurat
 \subsection{Training and hyper-parameter tuning}
 Each model was tuned by grid search with 5-fold cross-validation; the combination with the highest
 mean cross-validated ROC AUC was selected (Table~\ref{tab:tune}). Figure~\ref{fig:tune} shows the
-tuning surface of the random forest: the best setting considers $m_{\text{try}}=4$ predictors at each
-split with a minimum node size of 30. Differences between settings are small (0.666--0.673), so the
+tuning surface of the random forest: the best setting considers $m_{\text{try}}=3$ predictors at each
+split with a minimum node size of 10. Differences between settings are small (0.661--0.672), so the
 random forest is stable with respect to its hyper-parameters.
 
 \begin{table}[H]
@@ -452,16 +462,22 @@ random forest is stable with respect to its hyper-parameters.
 \toprule
 \textbf{Model} & \textbf{Parameters tuned} & \textbf{Grid size} & \textbf{Best values} & \textbf{CV ROC AUC} \\
 \midrule
-Random forest & $m_{\text{try}}$, minimum node size & 12 & $m_{\text{try}}=4$, node size $=30$ & 0.673 \\
-GBM & number of trees, tree depth & 9 & 100 trees, depth 3 & 0.673 \\
-RDA & $\gamma$, $\lambda$ & 9 & $\gamma=0.1$, $\lambda=0.5$ & 0.668 \\
-Lasso & $\lambda$ ($\alpha=1$) & 10 & $\lambda=0.01$ & 0.668 \\
-Elastic net & $\alpha$, $\lambda$ & 50 & $\alpha=0$, $\lambda=0.1$ & 0.667 \\
-LDA & none & 1 & -- & 0.661 \\
-Logistic regression & none & 1 & -- & 0.658 \\
-Naive Bayes & Laplace smoothing (fixed) & 1 & Laplace $=1$ & 0.649 \\
-Decision tree & complexity $c_p$ & 10 & $c_p=0.00085$ & 0.637 \\
-KNN & number of neighbours $k$ & 8 & $k=41$ & 0.625 \\
+AdaBoost & number of trees, tree depth & 9 & 200 trees, depth 2 & 0.675 \\
+GBM & number of trees, tree depth & 9 & 200 trees, depth 3 & 0.674 \\
+Random forest & $m_{\text{try}}$, minimum node size & 12 & $m_{\text{try}}=3$, node size $=10$ & 0.672 \\
+Extra trees & $m_{\text{try}}$, minimum node size & 8 & $m_{\text{try}}=8$, node size $=30$ & 0.672 \\
+Elastic net & $\alpha$, $\lambda$ & 50 & $\alpha=0.5$, $\lambda=0.01$ & 0.667 \\
+QDA & shrinkage $\gamma$ ($\lambda=0$) & 4 & $\gamma=0.1$ & 0.666 \\
+Lasso & $\lambda$ ($\alpha=1$) & 10 & $\lambda=0.01$ & 0.664 \\
+RDA & $\gamma$, $\lambda$ & 9 & $\gamma=0.1$, $\lambda=0.5$ & 0.663 \\
+Ridge & $\lambda$ ($\alpha=0$) & 10 & $\lambda=0.167$ & 0.663 \\
+LDA & none & 1 & -- & 0.662 \\
+Linear SVM & cost $C$ & 3 & $C=0.01$ & 0.655 \\
+Logistic regression & none & 1 & -- & 0.653 \\
+Naive Bayes & Laplace smoothing (fixed) & 1 & Laplace $=1$ & 0.648 \\
+Decision tree & complexity $c_p$ & 10 & $c_p=0.00085$ & 0.634 \\
+KNN & number of neighbours $k$ & 8 & $k=47$ & 0.632 \\
+Dummy (always ``Employed'') & none & 1 & -- & 0.500 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -475,33 +491,52 @@ KNN & number of neighbours $k$ & 8 & $k=41$ & 0.625 \\
 
 \subsection{Results}
 Table~\ref{tab:test} and Figure~\ref{fig:roc} present the performance of all models on the test set.
-The \textbf{random forest has the highest ROC AUC (0.676)}, followed closely by GBM (0.672) and LDA
-(0.664). All models clearly beat random guessing, but none is very strong. The models differ mainly in
-how they balance recall and specificity: Lasso finds the most unemployed youth (recall 0.78) at the
-cost of more false alarms, while RDA and the random forest are more balanced. Precision is low for
-every model (about 0.2) because only 15\% of youth are unemployed.
+The layout follows PyCaret's \texttt{compare\_models()} table, with the Matthews correlation
+coefficient
+\begin{equation}
+\mathrm{MCC}=\frac{TP\cdot TN-FP\cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}}
+\end{equation}
+and the training time (TT, including tuning) added to the usual metrics. The \textbf{random forest has
+the highest ROC AUC (0.687)} and the highest $\kappa$ (0.147), followed by AdaBoost (0.675), GBM
+(0.672) and extra trees (0.671). All models clearly beat the dummy model, but none is very strong. The
+models differ mainly in how they balance recall and specificity: Lasso finds the most unemployed youth
+(recall 0.78) at the cost of more false alarms, while RDA, QDA and the random forest are more balanced.
+Precision is low for every model (about 0.2) because only 15\% of youth are unemployed.
+
+The dummy model shows why accuracy was not used to choose a model: by predicting ``Employed'' for
+everybody it reaches the \emph{highest} accuracy (0.853), yet it finds no unemployed youth and its
+$\kappa$ and MCC are zero. The same effect appears in PyCaret's output, where logistic regression,
+naive Bayes and ridge tie with the dummy model on accuracy because they predict almost everyone as
+employed when no class balancing is applied.
 
 \begin{table}[H]
 \centering
-\caption{Performance of all models on the test set (4{,}786 youth; cut-off 0.5)}
+\caption{Performance of all models on the test set (4{,}786 youth; cut-off 0.5). Bold = best value
+in each column among the fifteen models (fastest for TT).}
 \label{tab:test}
-\small
-\begin{tabularx}{\textwidth}{@{}Y c c c c c c c@{}}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}Y c c c c c c c c r@{}}
 \toprule
-\textbf{Model} & \textbf{ROC AUC} & \textbf{Accuracy} & \textbf{Recall} & \textbf{Specificity} & \textbf{Precision} & \textbf{$F_1$} & \textbf{$\kappa$} \\
+\textbf{Model} & \textbf{AUC} & \textbf{Acc.} & \textbf{Recall} & \textbf{Spec.} & \textbf{Prec.} & \textbf{$F_1$} & \textbf{$\kappa$} & \textbf{MCC} & \textbf{TT (s)} \\
 \midrule
-\rowcolor{bestrow}\textbf{Random forest} & \textbf{0.676} & 0.623 & 0.621 & 0.624 & 0.222 & 0.327 & 0.140 \\
-GBM & 0.672 & 0.565 & 0.708 & 0.540 & 0.210 & 0.324 & 0.125 \\
-\rowcolor{lightrow}LDA & 0.664 & 0.577 & 0.685 & 0.558 & 0.211 & 0.323 & 0.126 \\
-RDA & 0.662 & 0.644 & 0.560 & 0.658 & 0.221 & 0.317 & 0.133 \\
-\rowcolor{lightrow}Lasso & 0.660 & 0.518 & 0.782 & 0.472 & 0.204 & 0.323 & 0.117 \\
-Logistic regression & 0.656 & 0.570 & 0.684 & 0.550 & 0.208 & 0.319 & 0.120 \\
-\rowcolor{lightrow}Elastic net & 0.656 & 0.575 & 0.685 & 0.556 & 0.211 & 0.322 & 0.125 \\
-Naive Bayes & 0.647 & 0.621 & 0.567 & 0.630 & 0.209 & 0.306 & 0.115 \\
-\rowcolor{lightrow}Decision tree & 0.640 & 0.576 & 0.627 & 0.567 & 0.200 & 0.303 & 0.103 \\
-KNN & 0.627 & 0.547 & 0.647 & 0.529 & 0.192 & 0.296 & 0.089 \\
+\rowcolor{bestrow}\textbf{Random forest} & \textbf{0.687} & \textbf{0.623} & 0.640 & 0.620 & \textbf{0.225} & \textbf{0.333} & \textbf{0.147} & 0.186 & 43.0 \\
+AdaBoost & 0.675 & 0.573 & 0.718 & 0.548 & 0.215 & 0.331 & 0.135 & \textbf{0.188} & 32.6 \\
+\rowcolor{lightrow}GBM & 0.672 & 0.592 & 0.662 & 0.579 & 0.214 & 0.323 & 0.129 & 0.172 & 37.1 \\
+Extra trees & 0.671 & 0.597 & 0.651 & 0.587 & 0.214 & 0.322 & 0.129 & 0.170 & 47.1 \\
+\rowcolor{lightrow}Ridge & 0.668 & 0.586 & 0.689 & 0.568 & 0.216 & 0.329 & 0.135 & 0.183 & 2.9 \\
+RDA & 0.667 & 0.619 & 0.613 & 0.620 & 0.218 & 0.322 & 0.133 & 0.168 & 56.8 \\
+\rowcolor{lightrow}Elastic net & 0.664 & 0.537 & 0.742 & 0.502 & 0.205 & 0.321 & 0.117 & 0.173 & 16.2 \\
+QDA & 0.663 & 0.618 & 0.590 & \textbf{0.622} & 0.213 & 0.313 & 0.122 & 0.153 & 30.0 \\
+\rowcolor{lightrow}LDA & 0.662 & 0.581 & 0.677 & 0.565 & 0.212 & 0.322 & 0.126 & 0.171 & 1.7 \\
+Lasso & 0.658 & 0.524 & \textbf{0.777} & 0.480 & 0.205 & 0.325 & 0.119 & 0.183 & 4.8 \\
+\rowcolor{lightrow}Logistic regression & 0.657 & 0.577 & 0.662 & 0.562 & 0.207 & 0.316 & 0.118 & 0.159 & 5.3 \\
+Naive Bayes & 0.649 & 0.609 & 0.584 & 0.613 & 0.207 & 0.306 & 0.113 & 0.142 & \textbf{0.7} \\
+\rowcolor{lightrow}Decision tree & 0.647 & 0.591 & 0.630 & 0.584 & 0.207 & 0.312 & 0.116 & 0.153 & 10.5 \\
+Linear SVM & 0.638 & 0.517 & 0.762 & 0.475 & 0.200 & 0.317 & 0.110 & 0.169 & 75.2 \\
+\rowcolor{lightrow}KNN & 0.624 & 0.554 & 0.633 & 0.540 & 0.192 & 0.295 & 0.089 & 0.122 & 71.3 \\
 \midrule
-Always ``Employed'' & 0.500 & 0.853 & 0.000 & 1.000 & -- & -- & 0.000 \\
+Dummy (always ``Employed'') & 0.500 & 0.853 & 0.000 & 1.000 & -- & -- & 0.000 & 0.000 & 0.5 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -509,14 +544,14 @@ Always ``Employed'' & 0.500 & 0.853 & 0.000 & 1.000 & -- & -- & 0.000 \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.74\textwidth]{02_roc_curves.png}
-\caption{ROC curves of the ten models on the test set; the dashed diagonal is random guessing.}
+\caption{ROC curves of the fifteen models on the test set; the dashed diagonal is random guessing (the dummy model).}
 \label{fig:roc}
 \end{figure}
 
 \paragraph{Confusion matrix of the best model.} Table~\ref{tab:cm} shows that, of the 705 unemployed
-youth in the test set, the random forest correctly identified 438 (62\%) and missed 267, while it
-wrongly flagged 1{,}536 employed youth. When the model predicts that a young person is employed it is
-right 90.5\% of the time (negative predictive value), so it is most useful for screening: setting
+youth in the test set, the random forest correctly identified 451 (64\%) and missed 254, while it
+wrongly flagged 1{,}552 employed youth. When the model predicts that a young person is employed it is
+right 90.9\% of the time (negative predictive value), so it is most useful for screening: setting
 aside low-risk youth and short-listing high-risk youth for further attention.
 
 \begin{table}[H]
@@ -527,16 +562,16 @@ aside low-risk youth and short-listing high-risk youth for further attention.
 \toprule
  & \textbf{Predicted unemployed} & \textbf{Predicted employed} & \textbf{Total} \\
 \midrule
-\textbf{Actually unemployed} & 438 (found) & 267 (missed) & 705 \\
-\rowcolor{lightrow}\textbf{Actually employed} & 1{,}536 (false alarm) & 2{,}545 (correct) & 4{,}081 \\
+\textbf{Actually unemployed} & 451 (found) & 254 (missed) & 705 \\
+\rowcolor{lightrow}\textbf{Actually employed} & 1{,}552 (false alarm) & 2{,}529 (correct) & 4{,}081 \\
 \midrule
-\textbf{Total} & 1{,}974 & 2{,}812 & 4{,}786 \\
+\textbf{Total} & 2{,}003 & 2{,}783 & 4{,}786 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \paragraph{Feature importance.} Figure~\ref{fig:imp} ranks the variables used by the random forest.
-District, relationship to the household head, age, years of schooling and household size dominate,
+District, age, household size, years of schooling and relationship to the household head dominate,
 followed by lighting source (a proxy for household living standard), education level and field of
 education. This impurity-based importance tends to favour variables with many distinct values, such
 as district (30 levels) and age, so it should be read together with the direction of effects below.
@@ -565,17 +600,19 @@ observed values (Figures~\ref{fig:pdp1} and~\ref{fig:pdp2}).
 \toprule
 \textbf{Characteristic (reference group)} & \textbf{OR} & \textbf{95\% CI} & \textbf{$p$-value} & \textbf{Interpretation} \\
 \midrule
-Household head (vs brother/sister of head) & 0.31 & 0.17--0.54 & $<0.001$ & about 70\% lower odds \\
-Non-relative (vs brother/sister of head) & 0.48 & 0.25--0.93 & 0.028 & about 52\% lower odds \\
-Single (vs living together) & 0.56 & 0.38--0.83 & 0.004 & about 44\% lower odds \\
-Male (vs female) & 0.77 & 0.64--0.93 & 0.006 & 23\% lower odds than women \\
+Household head (vs brother/sister of head) & 0.38 & 0.21--0.69 & 0.001 & about 62\% lower odds \\
+Single (vs living together) & 0.53 & 0.36--0.78 & 0.001 & about 47\% lower odds \\
+Non-relative (vs brother/sister of head) & 0.47 & 0.24--0.91 & 0.025 & about 53\% lower odds \\
+Married (vs living together) & 0.72 & 0.55--0.96 & 0.025 & about 28\% lower odds \\
+Male (vs female) & 0.81 & 0.68--0.98 & 0.027 & 19\% lower odds than women \\
+Field: education (vs agriculture) & 0.19 & 0.05--0.77 & 0.020 & lower odds; small group (205 youth) \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Children of the household head (OR 1.13) and married youth (OR 0.93) do not differ significantly from
-their reference groups. Seven districts (Nyabihu, Gakenke, Kayonza, Ngoma, Kirehe, Nyagatare and
-Nyarugenge) have significantly lower odds than the reference district, Bugesera. After adjustment,
+Children of the household head (OR 1.11) do not differ significantly from siblings of the head. Nine
+districts (Nyabihu, Gasabo, Gakenke, Kayonza, Nyamagabe, Rulindo, Gatsibo, Karongi and Kirehe) have
+significantly lower odds than the reference district, Bugesera. After adjustment,
 education level is not individually significant in the linear logistic model, but the flexible random
 forest captures a clear threshold effect of schooling (Figure~\ref{fig:pdp1}a).
 
@@ -601,33 +638,34 @@ forest captures a clear threshold effect of schooling (Figure~\ref{fig:pdp1}a).
 \label{fig:pdp2}
 \end{figure}
 
-The risk of unemployment is almost flat up to about nine years of schooling and then \textbf{jumps
+The risk of unemployment rises slowly up to about nine years of schooling and then \textbf{jumps
 sharply after ten years} (the end of lower secondary), remaining high for upper secondary and
-university levels. By age, risk peaks at 17--18 years, falls to its lowest level around 25, and then
-rises slightly. Household heads and domestic workers have the lowest risk. These patterns agree with
+university levels. By age, risk peaks at 17 years, falls to its lowest level at 25--27, and then
+rises again towards 30. Household heads and domestic workers have the lowest risk. These patterns agree with
 the descriptive rates in Table~\ref{tab:rates} and Figure~\ref{fig:edusex}.
 
 \subsection{Testing, verification and validation}
 The final models were validated in three complementary ways.
 
 \paragraph{(a) Cross-validation versus test set.} Figure~\ref{fig:cv} shows the mean cross-validated
-ROC AUC of each model with its 95\% confidence interval. The random forest and GBM have the best CV
-score (0.673), and the random forest's test ROC AUC (0.676) is almost identical. This close agreement
-shows that the models are \textbf{not overfitting} and that the result is not due to a lucky split.
+ROC AUC of each model with its 95\% confidence interval. AdaBoost, GBM, random forest and extra trees
+have the best CV scores (0.672--0.675), and their test ROC AUCs (0.671--0.687) are very close. This
+close agreement shows that the models are \textbf{not overfitting} and that the result is not due to
+a lucky split.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{01_cv_comparison.png}
-\caption{Cross-validated ROC AUC of the ten models (5 folds; dot = mean, bar = 95\% confidence interval).}
+\caption{Cross-validated ROC AUC of all models (5 folds; dot = mean, bar = 95\% confidence interval).}
 \label{fig:cv}
 \end{figure}
 
 \paragraph{(b) Statistical significance.} Table~\ref{tab:delong} compares the random forest with
-other models using the DeLong test on the same test set. The random forest is significantly better
-than logistic regression and KNN, but \textbf{not significantly better than GBM, LDA or Lasso}. The
-95\% confidence interval of its ROC AUC is 0.656--0.696. In practice the four best models perform
-about equally well; the random forest was chosen for the web application because it has the highest
-score.
+every other model using the DeLong test on the same test set. The random forest is significantly
+better than 12 of the 14 other models, but \textbf{not significantly better than AdaBoost or GBM}.
+The 95\% confidence interval of its ROC AUC is 0.667--0.708. In practice the three tree-boosting and
+forest models perform about equally well; the random forest was chosen for the web application
+because it has the highest test ROC AUC, $\kappa$ and $F_1$.
 
 \begin{table}[H]
 \centering
@@ -638,19 +676,28 @@ score.
 \toprule
 \textbf{Comparison} & \textbf{AUC difference} & \textbf{$p$-value} & \textbf{Significant at 5\%?} \\
 \midrule
-Random forest vs GBM & 0.004 & 0.587 & No \\
-Random forest vs LDA & 0.011 & 0.198 & No \\
-Random forest vs Lasso & 0.016 & 0.056 & No (borderline) \\
-Random forest vs Logistic regression & 0.019 & 0.038 & Yes \\
-Random forest vs KNN & 0.049 & $<0.001$ & Yes \\
+Random forest vs AdaBoost & 0.012 & 0.167 & No \\
+Random forest vs GBM & 0.015 & 0.098 & No \\
+Random forest vs Extra trees & 0.017 & 0.024 & Yes \\
+Random forest vs Ridge & 0.019 & 0.039 & Yes \\
+Random forest vs RDA & 0.021 & 0.019 & Yes \\
+Random forest vs Elastic net & 0.024 & 0.014 & Yes \\
+Random forest vs QDA & 0.025 & 0.008 & Yes \\
+Random forest vs LDA & 0.026 & 0.010 & Yes \\
+Random forest vs Lasso & 0.030 & 0.002 & Yes \\
+Random forest vs Logistic regression & 0.031 & 0.002 & Yes \\
+Random forest vs Naive Bayes & 0.039 & $<0.001$ & Yes \\
+Random forest vs Decision tree & 0.040 & $<0.001$ & Yes \\
+Random forest vs Linear SVM & 0.049 & $<0.001$ & Yes \\
+Random forest vs KNN & 0.064 & $<0.001$ & Yes \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \paragraph{(c) Performance in subgroups.} Table~\ref{tab:sub} checks whether the model works equally
 well for different groups. It separates employed and unemployed youth better in urban areas (ROC AUC
-0.74) than in rural areas (0.64). For women it finds most unemployed youth (recall 0.73) but raises
-more false alarms (specificity 0.46), whereas for men it finds fewer than half (recall 0.48). The
+0.75) than in rural areas (0.65). For women it finds most unemployed youth (recall 0.71) but raises
+more false alarms (specificity 0.50), whereas for men it finds only about half (recall 0.55). The
 model therefore behaves differently by sex, which must be taken into account before any practical use.
 
 \begin{table}[H]
@@ -662,10 +709,10 @@ model therefore behaves differently by sex, which must be taken into account bef
 \toprule
 \textbf{Group} & \textbf{Youth in test set} & \textbf{Unemployment rate} & \textbf{ROC AUC} & \textbf{Recall} & \textbf{Specificity} \\
 \midrule
-Female & 2{,}265 & 17.6\% & 0.638 & 0.732 & 0.458 \\
-Male & 2{,}521 & 12.1\% & 0.683 & 0.477 & 0.763 \\
-Urban & 1{,}794 & 13.5\% & 0.737 & 0.645 & 0.675 \\
-Rural & 2{,}992 & 15.5\% & 0.636 & 0.609 & 0.592 \\
+Female & 2{,}265 & 17.6\% & 0.664 & 0.709 & 0.502 \\
+Male & 2{,}521 & 12.1\% & 0.686 & 0.549 & 0.719 \\
+Urban & 1{,}794 & 13.5\% & 0.746 & 0.727 & 0.639 \\
+Rural & 2{,}992 & 15.5\% & 0.647 & 0.594 & 0.608 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -682,16 +729,16 @@ Rural & 2{,}992 & 15.5\% & 0.636 & 0.609 & 0.592 \\
       qualifications, while less educated youth quickly enter agriculture or informal work. Having a
       job does not mean having a good job, given that about 90\% of employment is informal
       \cite{nisr_annual}.
-\item \textbf{Position in the household matters.} Household heads have about 70\% lower odds of
+\item \textbf{Position in the household matters.} Household heads have about 62\% lower odds of
       unemployment than siblings of the head and receive the lowest risk from the random forest. Sons,
       daughters, grandchildren and spouses, who can rely on family support while searching, have the
       highest unemployment rates.
 \item \textbf{Gender gap.} After controlling for education, age and location, young men still have
-      23\% lower odds of unemployment than young women.
+      19\% lower odds of unemployment than young women.
 \item \textbf{Location.} District is the strongest predictor in the random forest and several
       districts differ significantly, reflecting local labour-market conditions.
-\item \textbf{Prediction is possible but modest.} The best ROC AUC is about 0.68. Simple linear models
-      (LDA, Lasso) are nearly as good as the random forest and GBM, so the relationships are mostly
+\item \textbf{Prediction is possible but modest.} The best ROC AUC is about 0.69. Simple linear models
+      (ridge, LDA, Lasso) are only 0.02--0.03 behind the random forest and boosting models, so the relationships are mostly
       simple and additive. Much of what determines whether a young person finds work (networks, job
       offers, motivation, local demand) is not measured in the survey.
 \end{enumerate}
@@ -701,7 +748,7 @@ rather than to make decisions about individuals.
 
 \subsection{Limitations}
 \begin{itemize}
-\item \textbf{Modest predictive power} (ROC AUC $\approx 0.68$) and low precision: many youth flagged
+\item \textbf{Modest predictive power} (ROC AUC $\approx 0.69$) and low precision: many youth flagged
       as at risk are actually employed.
 \item \textbf{Associations, not causes.} The data are cross-sectional; the results show which
       characteristics predict unemployment, not what causes it.
@@ -746,7 +793,7 @@ GitHub repository. Its main features are:
 \item \textbf{Machine-learning shortcuts} in the top bar show the best model and its ROC AUC and jump
       directly to the model comparison, ROC curves, cut-off explorer, variable importance or risk
       calculator.
-\item \textbf{Model page}: comparison table of the ten models, ROC and cross-validation charts, a
+\item \textbf{Model page}: PyCaret-style comparison table of the fifteen models and the dummy model (best value in each column highlighted, trophy icon on the model used in the app), ROC and cross-validation charts, a
       cut-off slider that updates the confusion matrix and metrics, and the feature-importance chart.
 \item \textbf{Risk calculator}: the user describes a young person and the random forest returns a risk
       score, the estimated real chance of unemployment from Equation~\eqref{eq:prior}, and how the risk
@@ -765,10 +812,11 @@ GitHub repository. Its main features are:
 % ================================================================= 7
 \section{Conclusions}
 This project translated youth unemployment in Rwanda into a binary classification task and solved it
-with ten machine-learning algorithms using the 2025 Labour Force Survey. After careful cleaning,
+with fifteen machine-learning algorithms (the PyCaret \texttt{compare\_models()} list, rebuilt in R
+with \texttt{caret}) using the 2025 Labour Force Survey. After careful cleaning,
 leakage-free feature selection, a stratified 70/30 split, 5-fold cross-validation and down-sampling
-for class imbalance, the \textbf{random forest} achieved the best test ROC AUC (0.676), although it was
-not significantly better than GBM, LDA or Lasso. Accuracy and test error were deliberately not used to
+for class imbalance, the \textbf{random forest} achieved the best test ROC AUC (0.687), although it was
+not significantly better than AdaBoost or GBM. Accuracy and test error were deliberately not used to
 select models, because a useless model that predicts ``employed'' for everybody would have the highest
 accuracy.
 

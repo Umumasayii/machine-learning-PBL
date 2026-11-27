@@ -46,11 +46,11 @@ ml <- readRDS(ml_file)
 
 app_name   <- ml$app_name                                  # model used in the app (highest ROC AUC)
 app_label  <- clean_model(app_name)                         # e.g. "Random_forest" -> "Random forest"
-model_cols[[app_label]] <- pal$coral                       # the app model is drawn in coral
+ml_models  <- ml$results[ml$results$Model != ml$baseline, ]  # real models (the dummy is the reference)
 app_cutoff <- 0.5                                          # default cut-off of the model
 base_rate  <- mean(ml$test_probs$actual == "Unemployed")   # real share of unemployed youth
 app_row    <- ml$results[ml$results$Model == app_name, ]
-roc_data   <- roc_points(ml$test_probs)
+roc_data   <- roc_points(ml$test_probs, ml$baseline)
 
 # Variables people can explore, grouped by tier
 explore_vars <- list(
@@ -371,10 +371,11 @@ calc_select <- function(id, label, var, selected) {
 page_model <- tagList(
   page_banner("Model & Predictions", "Who is at risk of unemployment? A machine-learning view (caret)"),
   page_intro(p(
-    nrow(ml$results), "models were trained with", tags$b("caret"), "on 70% of the youth and tested on the other 30%.",
+    nrow(ml_models), "models (plus a dummy reference model) were trained with", tags$b("caret"),
+    "on 70% of the youth and tested on the other 30%.",
     "Each model was tuned with 5-fold cross-validation, chosen by ROC AUC, and trained on",
     tags$b("down-sampled"), "folds (as many employed as unemployed youth) because only 15% are unemployed.",
-    "The dashboard uses", tags$b(model_full_name[[app_label]]), ", the model with the",
+    "The dashboard uses", tags$b(app_label), paste0("(caret method \"", app_row$Method, "\"),"), "the model with the",
     tags$b("highest ROC AUC"), "on the test set. The sidebar filters do not apply to this page.")),
   div(class = "kpi-strip",
       layout_column_wrap(
@@ -387,13 +388,11 @@ page_model <- tagList(
 
   # Model comparison
   div(id = "ml_compare", class = "ml-anchor"),
-  layout_columns(
-    col_widths = c(6, 6),
-    dash_box("Model comparison on the test set", "trophy-fill", uiOutput("t_models"),
-             insight_id = "i_models"),
-    dash_box("Main scores by model", "bar-chart-steps", teal = TRUE,
-             plotlyOutput("c_models", height = chart_h))
-  ),
+  # Full width: the table has as many columns as PyCaret's compare_models()
+  dash_box("Model comparison on the test set", "trophy-fill", uiOutput("t_models"),
+           insight_id = "i_models"),
+  dash_box("Main scores by model", "bar-chart-steps", teal = TRUE,
+           plotlyOutput("c_models", height = chart_h)),
   div(id = "ml_roc", class = "ml-anchor"),
   layout_columns(
     col_widths = c(6, 6),
@@ -862,16 +861,16 @@ server <- function(input, output, session) {
 
   output$t_models <- renderUI(model_metrics_table(ml))
   output$i_models <- renderUI({
-    second <- ml$results[2, ]   # results are sorted by ROC AUC
+    second <- ml_models[2, ]   # results are sorted by ROC AUC
     HTML(sprintf(
       "<b>%s</b> has the highest test ROC AUC (<b>%.3f</b>) and finds <b>%s</b> of unemployed youth. %s is close behind (%.3f): the top models differ only slightly, and all beat guessing (0.5) by a modest margin.",
       app_label, app_row$ROC_AUC, pct(app_row$Sensitivity), clean_model(second$Model), second$ROC_AUC))
   })
   output$c_models <- renderPlotly(model_compare_chart(ml))
 
-  output$c_roc <- renderPlotly(roc_chart(roc_data))
+  output$c_roc <- renderPlotly(roc_chart(roc_data, ml))
   output$i_roc <- renderUI({
-    r <- ml$results
+    r <- ml_models
     HTML(sprintf("Test ROC AUC ranges from <b>%.3f</b> (%s) to <b>%.3f</b> (%s). Most curves lie close together, so the models rank youth in a similar way. The dashed line is random guessing.",
                  min(r$ROC_AUC), clean_model(r$Model[which.min(r$ROC_AUC)]),
                  max(r$ROC_AUC), clean_model(r$Model[which.max(r$ROC_AUC)])))
@@ -908,10 +907,11 @@ server <- function(input, output, session) {
   output$c_imp <- renderPlotly(importance_chart(ml))
   output$i_imp <- renderUI({
     imp <- ml$importance; top <- rownames(imp)[order(-imp[, 1])][1:3]
-    how <- switch(app_name,
-      Random_forest = "Random forest importance = how much each variable improves the splits of the trees (impurity). This measure favours variables with many values, such as district (30) and age.",
-      GBM = "GBM importance = how much each variable improves the boosted trees.",
-      Elastic_net = , Lasso = , Logistic = "Importance = size of the model coefficient (standardised).",
+    how <- switch(app_row$Method,   # the caret method of the app model
+      ranger = "Tree-ensemble importance = how much each variable improves the splits of the trees (impurity). This measure favours variables with many values, such as district and age.",
+      gbm = "Boosting importance = how much each variable improves the boosted trees.",
+      rpart = "Tree importance = how much each variable improves the splits of the tree.",
+      glmnet = , glm = "Importance = size of the model coefficient (standardised).",
       "This model has no built-in importance, so caret ranks each variable by how well it alone separates the two groups (ROC).")
     HTML(sprintf("The strongest signals are <b>%s</b>. %s", paste(pretty_feature(top), collapse = ", "), how))
   })

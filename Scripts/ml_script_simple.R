@@ -43,58 +43,52 @@ ctrl <- trainControl(method = "cv",
 
 formula <- employment_status ~ .
 
+# -----------------------------------------------------------------------------
+# 4. Train the models (the same list as PyCaret's compare_models(), plus a few)
+# -----------------------------------------------------------------------------
+# Every model uses the same 5 folds, so their results can be compared fairly.
+set.seed(123)   # down-sampling is random: this makes the results repeatable
 
+# Logistic regression
 m_log <- train(formula, data = train, method = "glm", family = "binomial",
                metric = "ROC", trControl = ctrl)
 
-m_dt <- train(formula, data = train, method = "rpart",
-              tuneLength = 10,
-              metric = "ROC", trControl = ctrl)
-
-# Regularized Discriminant Analysis (avoids within-class rank deficiency)
-m_rda <- train(formula, data = train, method = "rda",
-               tuneGrid = expand.grid(gamma = c(0.1, 0.5, 1), lambda = c(0.1, 0.5, 1)),
-               metric = "ROC", trControl = ctrl)
-
-m_lda <- train(formula, data = train, method = "lda",
-               metric = "ROC", trControl = ctrl)
-
-# glmnet with alpha = 1 is the Lasso
-m_las <- train(formula, data = train, method = "glmnet",
-               tuneGrid = expand.grid(alpha = 1, lambda = 10^seq(-4, -1, length = 10)),
-               metric = "ROC", trControl = ctrl)
-
-# kNN needs scaled predictors; we try k = 5, 11, 17, ..., 47
-m_knn <- train(formula, data = train, method = "knn",
-               preProcess = c("center", "scale"),
-               tuneGrid = data.frame(k = seq(5, 47, by = 6)),
-               metric = "ROC", trControl = ctrl)
-
+# Naive Bayes (x / y form, so the factors are used directly)
 m_nb <- train(x = train[, names(train) != "employment_status"],
               y = train$employment_status,
               method = "naive_bayes",
               tuneGrid = expand.grid(laplace = 1, usekernel = FALSE, adjust = 1),
               metric = "ROC", trControl = ctrl)
 
-# Elastic net: a mix of Lasso (alpha = 1) and Ridge (alpha = 0); caret tries both
-m_enet <- train(formula, data = train, method = "glmnet",
-                tuneGrid = expand.grid(alpha = c(0, 0.25, 0.5, 0.75, 1),
-                                       lambda = 10^seq(-4, -1, length = 10)),
-                metric = "ROC", trControl = ctrl)
+# Ridge: glmnet with alpha = 0 (all coefficients are shrunk, none set to zero)
+m_ridge <- train(formula, data = train, method = "glmnet",
+                 tuneGrid = expand.grid(alpha = 0, lambda = 10^seq(-3, 1, length = 10)),
+                 metric = "ROC", trControl = ctrl)
 
-# Random forest (ranger): many decision trees, each on a random sample of rows
-# and predictors; their votes are averaged.
-#  - x / y form, so ranger uses the factors directly
-#  - mtry = number of predictors tried at each split
-m_rf <- train(x = train[, names(train) != "employment_status"],
-              y = train$employment_status,
-              method = "ranger",
-              num.trees = 300,
-              importance = "impurity",
-              tuneGrid = expand.grid(mtry = c(2, 3, 4, 6),
-                                     splitrule = "gini",
-                                     min.node.size = c(10, 30, 60)),
-              metric = "ROC", trControl = ctrl)
+# Dummy model: caret's "null" model always predicts the most common class.
+# It is trained WITHOUT down-sampling, so the most common class is "Employed".
+# It is the reference: a useful model must do better than this.
+ctrl_dummy <- trainControl(method = "cv",
+                           index = folds,
+                           classProbs = TRUE,
+                           summaryFunction = twoClassSummary)
+
+m_dummy <- train(formula, data = train, method = "null",
+                 metric = "ROC", trControl = ctrl_dummy)
+
+# AdaBoost: boosting with the exponential (AdaBoost) loss, fitted with gbm
+m_ada <- train(formula, data = train, method = "gbm",
+               distribution = "adaboost",
+               tuneGrid = expand.grid(n.trees = c(100, 200, 300),
+                                      interaction.depth = c(1, 2, 3),
+                                      shrinkage = 0.05,
+                                      n.minobsinnode = 20),
+               verbose = FALSE,
+               metric = "ROC", trControl = ctrl)
+
+# Linear Discriminant Analysis
+m_lda <- train(formula, data = train, method = "lda",
+               metric = "ROC", trControl = ctrl)
 
 # Gradient boosting (gbm): small trees built one after another, each one
 # correcting the mistakes of the trees before it.
@@ -106,132 +100,153 @@ m_gbm <- train(formula, data = train, method = "gbm",
                verbose = FALSE,
                metric = "ROC", trControl = ctrl)
 
-# Best tuning values
-m_dt$bestTune
-m_rda$bestTune
-m_las$bestTune
-m_knn$bestTune
-m_enet$bestTune
-m_rf$bestTune
-m_gbm$bestTune
+# Random forest (ranger): many decision trees, each on a random sample of rows
+# and predictors; their votes are averaged.
+#  - mtry = number of predictors tried at each split
+m_rf <- train(x = train[, names(train) != "employment_status"],
+              y = train$employment_status,
+              method = "ranger",
+              num.trees = 300,
+              importance = "impurity",
+              tuneGrid = expand.grid(mtry = c(2, 3, 4, 6),
+                                     splitrule = "gini",
+                                     min.node.size = c(10, 30, 60)),
+              metric = "ROC", trControl = ctrl)
+
+# kNN needs scaled predictors; we try k = 5, 11, 17, ..., 47
+m_knn <- train(formula, data = train, method = "knn",
+               preProcess = c("center", "scale"),
+               tuneGrid = data.frame(k = seq(5, 47, by = 6)),
+               metric = "ROC", trControl = ctrl)
+
+# Extra trees: like a random forest, but the split points are chosen at random
+m_et <- train(x = train[, names(train) != "employment_status"],
+              y = train$employment_status,
+              method = "ranger",
+              num.trees = 300,
+              importance = "impurity",
+              tuneGrid = expand.grid(mtry = c(2, 4, 6, 8),
+                                     splitrule = "extratrees",
+                                     min.node.size = c(10, 30)),
+              metric = "ROC", trControl = ctrl)
+
+# Support vector machine with a linear kernel (needs scaled predictors)
+m_svm <- train(formula, data = train, method = "svmLinear",
+               preProcess = c("center", "scale"),
+               tuneGrid = data.frame(C = c(0.01, 0.1, 1)),
+               metric = "ROC", trControl = ctrl)
+
+# Decision tree
+m_dt <- train(formula, data = train, method = "rpart",
+              tuneLength = 10,
+              metric = "ROC", trControl = ctrl)
+
+# Quadratic Discriminant Analysis. Plain QDA (method = "qda") stops with
+# "rank deficiency": some dummy variables (e.g. small districts) never change
+# inside the unemployed group. RDA with lambda = 0 is QDA with a little
+# shrinkage (gamma) of the covariance matrices, which solves this.
+m_qda <- train(formula, data = train, method = "rda",
+               tuneGrid = expand.grid(gamma = c(0.05, 0.1, 0.3, 0.5), lambda = 0),
+               metric = "ROC", trControl = ctrl)
+
+# Regularized Discriminant Analysis (a mix between LDA and QDA)
+m_rda <- train(formula, data = train, method = "rda",
+               tuneGrid = expand.grid(gamma = c(0.1, 0.5, 1), lambda = c(0.1, 0.5, 1)),
+               metric = "ROC", trControl = ctrl)
+
+# Lasso: glmnet with alpha = 1
+m_las <- train(formula, data = train, method = "glmnet",
+               tuneGrid = expand.grid(alpha = 1, lambda = 10^seq(-4, -1, length = 10)),
+               metric = "ROC", trControl = ctrl)
+
+# Elastic net: a mix of Lasso (alpha = 1) and Ridge (alpha = 0); caret tries both
+m_enet <- train(formula, data = train, method = "glmnet",
+                tuneGrid = expand.grid(alpha = c(0, 0.25, 0.5, 0.75, 1),
+                                       lambda = 10^seq(-4, -1, length = 10)),
+                metric = "ROC", trControl = ctrl)
+
+
+# All models in one named list. The names are used in every table and chart.
+models <- list(Logistic      = m_log,
+               Naive_Bayes   = m_nb,
+               Ridge         = m_ridge,
+               Dummy         = m_dummy,
+               AdaBoost      = m_ada,
+               LDA           = m_lda,
+               GBM           = m_gbm,
+               Random_forest = m_rf,
+               KNN           = m_knn,
+               Extra_trees   = m_et,
+               SVM_linear    = m_svm,
+               Decision_tree = m_dt,
+               QDA           = m_qda,
+               RDA           = m_rda,
+               Lasso         = m_las,
+               Elastic_net   = m_enet)
+
+baseline <- "Dummy"   # the reference model, left out when we pick the best model
 
 
 # -----------------------------------------------------------------------------
 # 5. Compare the models on cross-validation
 # -----------------------------------------------------------------------------
-models <- list(Logistic = m_log, Decision_tree = m_dt, RDA = m_rda, LDA = m_lda,
-               Lasso = m_las, KNN = m_knn, Naive_Bayes = m_nb,
-               Elastic_net = m_enet, Random_forest = m_rf, GBM = m_gbm)
-
 cv_results <- resamples(models)
 summary(cv_results)
 
-png("Outputs/ML_simple/figures/01_cv_comparison.png", width = 1600, height = 1000, res = 200)
+png("Outputs/ML_simple/figures/01_cv_comparison.png", width = 1600, height = 1200, res = 200)
 print(dotplot(cv_results, metric = "ROC", main = "Cross-validated ROC AUC (5 folds)"))
 dev.off()   # print() is needed so the plot is saved when the script is sourced
 
 
+# -----------------------------------------------------------------------------
+# 6. Test-set results of every model
+# -----------------------------------------------------------------------------
 test_x <- test[, names(test) != "employment_status"]
-
-# Predicted class (Unemployed / Employed)
-pred_log <- predict(m_log, newdata = test_x)
-pred_dt  <- predict(m_dt,  newdata = test_x)
-pred_rda <- predict(m_rda, newdata = test_x)
-pred_lda <- predict(m_lda, newdata = test_x)
-pred_las <- predict(m_las, newdata = test_x)
-pred_knn <- predict(m_knn, newdata = test_x)
-pred_nb  <- predict(m_nb,  newdata = test_x)
-pred_enet <- predict(m_enet, newdata = test_x)
-pred_rf   <- predict(m_rf,   newdata = test_x)
-pred_gbm  <- predict(m_gbm,  newdata = test_x)
-
-# Predicted probability of being unemployed (needed for the ROC curve)
-prob_log <- predict(m_log, newdata = test_x, type = "prob")$Unemployed
-prob_dt  <- predict(m_dt,  newdata = test_x, type = "prob")$Unemployed
-prob_rda <- predict(m_rda, newdata = test_x, type = "prob")$Unemployed
-prob_lda <- predict(m_lda, newdata = test_x, type = "prob")$Unemployed
-prob_las <- predict(m_las, newdata = test_x, type = "prob")$Unemployed
-prob_knn <- predict(m_knn, newdata = test_x, type = "prob")$Unemployed
-prob_nb  <- predict(m_nb,  newdata = test_x, type = "prob")$Unemployed
-prob_enet <- predict(m_enet, newdata = test_x, type = "prob")$Unemployed
-prob_rf   <- predict(m_rf,   newdata = test_x, type = "prob")$Unemployed
-prob_gbm  <- predict(m_gbm,  newdata = test_x, type = "prob")$Unemployed
-
-
-# -----------------------------------------------------------------------------
-# 7. Confusion matrices and ROC curves
-# -----------------------------------------------------------------------------
 actual <- test$employment_status
 
-con_log <- confusionMatrix(pred_log, actual, positive = "Unemployed", mode = "everything")
-con_dt  <- confusionMatrix(pred_dt,  actual, positive = "Unemployed", mode = "everything")
-con_rda <- confusionMatrix(pred_rda, actual, positive = "Unemployed", mode = "everything")
-con_lda <- confusionMatrix(pred_lda, actual, positive = "Unemployed", mode = "everything")
-con_las <- confusionMatrix(pred_las, actual, positive = "Unemployed", mode = "everything")
-con_knn <- confusionMatrix(pred_knn, actual, positive = "Unemployed", mode = "everything")
-con_nb  <- confusionMatrix(pred_nb,  actual, positive = "Unemployed", mode = "everything")
-con_enet <- confusionMatrix(pred_enet, actual, positive = "Unemployed", mode = "everything")
-con_rf   <- confusionMatrix(pred_rf,   actual, positive = "Unemployed", mode = "everything")
-con_gbm  <- confusionMatrix(pred_gbm,  actual, positive = "Unemployed", mode = "everything")
+# Matthews correlation coefficient (MCC) from a 2 x 2 confusion table.
+# It goes from -1 to 1; 0 means "no better than guessing".
+mcc <- function(tab) {
+  tp <- as.numeric(tab["Unemployed", "Unemployed"])
+  tn <- as.numeric(tab["Employed",   "Employed"])
+  fp <- as.numeric(tab["Unemployed", "Employed"])
+  fn <- as.numeric(tab["Employed",   "Unemployed"])
+  bottom <- sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+  if (bottom == 0) return(0)
+  (tp * tn - fp * fn) / bottom
+}
 
-roc_log <- roc(actual, prob_log, levels = c("Employed", "Unemployed"), direction = "<")
-roc_dt  <- roc(actual, prob_dt,  levels = c("Employed", "Unemployed"), direction = "<")
-roc_rda <- roc(actual, prob_rda, levels = c("Employed", "Unemployed"), direction = "<")
-roc_lda <- roc(actual, prob_lda, levels = c("Employed", "Unemployed"), direction = "<")
-roc_las <- roc(actual, prob_las, levels = c("Employed", "Unemployed"), direction = "<")
-roc_knn <- roc(actual, prob_knn, levels = c("Employed", "Unemployed"), direction = "<")
-roc_nb  <- roc(actual, prob_nb,  levels = c("Employed", "Unemployed"), direction = "<")
-roc_enet <- roc(actual, prob_enet, levels = c("Employed", "Unemployed"), direction = "<")
-roc_rf   <- roc(actual, prob_rf,   levels = c("Employed", "Unemployed"), direction = "<")
-roc_gbm  <- roc(actual, prob_gbm,  levels = c("Employed", "Unemployed"), direction = "<")
+results    <- data.frame()             # one row per model
+roc_list   <- list()                   # ROC curve of every model
+test_probs <- data.frame(actual = actual)   # risk score of every test person
 
+for (name in names(models)) {
+  model <- models[[name]]
 
-# -----------------------------------------------------------------------------
-# 8. Results table
-# -----------------------------------------------------------------------------
-results <- data.frame(
-  Model = c("Logistic", "Decision_tree", "RDA", "LDA", "Lasso", "KNN", "Naive_Bayes",
-            "Elastic_net", "Random_forest", "GBM"),
+  # Predicted class and predicted probability of being unemployed
+  pred <- predict(model, newdata = test_x)
+  prob <- predict(model, newdata = test_x, type = "prob")$Unemployed
 
-  ROC_AUC = c(auc(roc_log), auc(roc_dt), auc(roc_rda), auc(roc_lda),
-              auc(roc_las), auc(roc_knn), auc(roc_nb),
-              auc(roc_enet), auc(roc_rf), auc(roc_gbm)),
+  con     <- confusionMatrix(pred, actual, positive = "Unemployed", mode = "everything")
+  roc_obj <- roc(actual, prob, levels = c("Employed", "Unemployed"), direction = "<", quiet = TRUE)
 
-  Accuracy = c(con_log$overall["Accuracy"], con_dt$overall["Accuracy"],
-               con_rda$overall["Accuracy"], con_lda$overall["Accuracy"],
-               con_las$overall["Accuracy"], con_knn$overall["Accuracy"],
-               con_nb$overall["Accuracy"], con_enet$overall["Accuracy"],
-               con_rf$overall["Accuracy"], con_gbm$overall["Accuracy"]),
+  roc_list[[name]]   <- roc_obj
+  test_probs[[name]] <- prob
 
-  # Sensitivity = share of unemployed youth the model finds (recall)
-  Sensitivity = c(con_log$byClass["Sensitivity"], con_dt$byClass["Sensitivity"],
-                  con_rda$byClass["Sensitivity"], con_lda$byClass["Sensitivity"],
-                  con_las$byClass["Sensitivity"], con_knn$byClass["Sensitivity"],
-                  con_nb$byClass["Sensitivity"], con_enet$byClass["Sensitivity"],
-                  con_rf$byClass["Sensitivity"], con_gbm$byClass["Sensitivity"]),
-
-  Specificity = c(con_log$byClass["Specificity"], con_dt$byClass["Specificity"],
-                  con_rda$byClass["Specificity"], con_lda$byClass["Specificity"],
-                  con_las$byClass["Specificity"], con_knn$byClass["Specificity"],
-                  con_nb$byClass["Specificity"], con_enet$byClass["Specificity"],
-                  con_rf$byClass["Specificity"], con_gbm$byClass["Specificity"]),
-
-  Precision = c(con_log$byClass["Precision"], con_dt$byClass["Precision"],
-                con_rda$byClass["Precision"], con_lda$byClass["Precision"],
-                con_las$byClass["Precision"], con_knn$byClass["Precision"],
-                con_nb$byClass["Precision"], con_enet$byClass["Precision"],
-                con_rf$byClass["Precision"], con_gbm$byClass["Precision"]),
-
-  F1 = c(con_log$byClass["F1"], con_dt$byClass["F1"], con_rda$byClass["F1"],
-         con_lda$byClass["F1"], con_las$byClass["F1"], con_knn$byClass["F1"],
-         con_nb$byClass["F1"], con_enet$byClass["F1"], con_rf$byClass["F1"],
-         con_gbm$byClass["F1"]),
-
-  Kappa = c(con_log$overall["Kappa"], con_dt$overall["Kappa"], con_rda$overall["Kappa"],
-            con_lda$overall["Kappa"], con_las$overall["Kappa"], con_knn$overall["Kappa"],
-            con_nb$overall["Kappa"], con_enet$overall["Kappa"], con_rf$overall["Kappa"],
-            con_gbm$overall["Kappa"])
-)
+  results <- rbind(results, data.frame(
+    Model       = name,
+    Method      = model$method,                  # caret method name
+    ROC_AUC     = as.numeric(auc(roc_obj)),
+    Accuracy    = con$overall[["Accuracy"]],
+    Sensitivity = con$byClass[["Sensitivity"]],  # recall: share of unemployed youth found
+    Specificity = con$byClass[["Specificity"]],
+    Precision   = con$byClass[["Precision"]],
+    F1          = con$byClass[["F1"]],
+    Kappa       = con$overall[["Kappa"]],
+    MCC         = mcc(con$table),
+    Train_time_sec = model$times$everything[["elapsed"]]   # tuning + final fit
+  ))
+}
 
 results <- results %>%
   mutate(across(where(is.numeric), ~ round(.x, 3))) %>%
@@ -240,30 +255,25 @@ results <- results %>%
 knitr::kable(results)
 write_csv(results, "Outputs/ML_simple/test_results.csv")
 
-# Reference: a "model" that always says Employed
-cat("Accuracy if we always predict 'Employed': ", mean(actual == "Employed"), "\n")
-
 
 # -----------------------------------------------------------------------------
-# 9. Best model (highest ROC AUC on the test set)
+# 7. Best model (highest ROC AUC on the test set, the dummy is not a candidate)
 # -----------------------------------------------------------------------------
-best <- results$Model[1]
-cat("The best model is", best, "with ROC AUC =", results$ROC_AUC[1], "\n")
+candidates <- results %>% filter(Model != baseline)
+best <- candidates$Model[1]
+cat("The best model is", best, "with ROC AUC =", candidates$ROC_AUC[1], "\n")
 
 best_model <- models[[best]]
+best_pred  <- predict(best_model, newdata = test_x)
+best_prob  <- test_probs[[best]]
 
 # Confusion matrix of the best model
-best_pred <- predict(best_model, newdata = test_x)
-best_con  <- confusionMatrix(best_pred, actual, positive = "Unemployed", mode = "everything")
+best_con <- confusionMatrix(best_pred, actual, positive = "Unemployed", mode = "everything")
 best_con
 capture.output(best_con, file = "Outputs/ML_simple/confusion_matrix_best.txt")
 
-
-roc_list <- list(Logistic = roc_log, Decision_tree = roc_dt, RDA = roc_rda, LDA = roc_lda,
-                 Lasso = roc_las, KNN = roc_knn, Naive_Bayes = roc_nb,
-                 Elastic_net = roc_enet, Random_forest = roc_rf, GBM = roc_gbm)
-
-roc_plot <- ggroc(roc_list, linewidth = 0.9) +
+# ROC curves (the dummy is the dashed diagonal line, so it is not drawn)
+roc_plot <- ggroc(roc_list[names(roc_list) != baseline], linewidth = 0.8) +
   geom_abline(slope = 1, intercept = 1, linetype = "dashed", colour = "grey50") +
   labs(title = "ROC curves on the test set", colour = "Model",
        x = "Specificity", y = "Sensitivity (recall of Unemployed)") +
@@ -281,153 +291,102 @@ dev.off()
 
 
 # -----------------------------------------------------------------------------
-# 11. Save what the Shiny dashboard needs (the app uses the best model)
+# 8. Save what the Shiny dashboard needs (the app uses the best model)
 # -----------------------------------------------------------------------------
-# Predicted probability of "Unemployed" for every test person and every model
-test_probs <- data.frame(
-  actual        = actual,
-  Logistic      = prob_log,
-  Decision_tree = prob_dt,
-  RDA           = prob_rda,
-  LDA           = prob_lda,
-  Lasso         = prob_las,
-  KNN           = prob_knn,
-  Naive_Bayes   = prob_nb,
-  Elastic_net   = prob_enet,
-  Random_forest = prob_rf,
-  GBM           = prob_gbm
-)
-
 cv_roc <- summary(cv_results)$statistics$ROC
 
 dashboard <- list(
-  app_model  = best_model,                 # the model with the highest test ROC AUC
+  app_model  = best_model,       # the model with the highest test ROC AUC
   app_name   = best,
+  baseline   = baseline,         # the dummy model, shown as the reference row
   results    = results,
   cv_roc     = cv_roc,
   test_probs = test_probs,
   importance = varImp(best_model)$importance
 )
-# 
+
 saveRDS(dashboard, "Outputs/ML_simple/dashboard_model.rds")
 cat("Saved: Outputs/ML_simple/dashboard_model.rds\n")
 
 
 # -----------------------------------------------------------------------------
-# 12. Tuning results (which hyper-parameters were tried and which won)
+# 9. Tuning results (which hyper-parameters were tried and which won)
 # -----------------------------------------------------------------------------
-# For every model, caret tried each value in the tuning grid on the 5 folds
-# and kept the value with the highest cross-validated ROC AUC.
+# For every model, caret tried each row of its tuning grid on the 5 folds
+# and kept the row with the highest cross-validated ROC AUC (bestTune).
 
-tuning <- data.frame(
-  Model = c("Decision tree", "RDA", "Lasso", "Elastic net", "KNN",
-            "Random forest", "GBM", "Naive Bayes"),
+tuning <- data.frame()
 
-  Parameters_tuned = c("cp (tree complexity)",
-                       "gamma, lambda",
-                       "lambda (alpha fixed at 1)",
-                       "alpha, lambda",
-                       "k (number of neighbours)",
-                       "mtry, min.node.size",
-                       "n.trees, interaction.depth",
-                       "laplace fixed at 1"),
+for (name in names(models)) {
+  model <- models[[name]]
+  tuned <- model$bestTune
 
-  Combinations_tried = c(nrow(m_dt$results), nrow(m_rda$results), nrow(m_las$results),
-                         nrow(m_enet$results), nrow(m_knn$results), nrow(m_rf$results),
-                         nrow(m_gbm$results), nrow(m_nb$results)),
+  tuning <- rbind(tuning, data.frame(
+    Model              = name,
+    Parameters         = paste(names(tuned), collapse = ", "),
+    Combinations_tried = nrow(model$results),
+    Best_values        = paste(names(tuned), "=", unlist(format(tuned, digits = 3)), collapse = ", "),   # numbers to 3 digits
+    Best_CV_ROC        = round(max(model$results$ROC, na.rm = TRUE), 3)
+  ))
 
-  Best_values = c(paste("cp =", signif(m_dt$bestTune$cp, 3)),
-                  paste("gamma =", m_rda$bestTune$gamma, ", lambda =", m_rda$bestTune$lambda),
-                  paste("lambda =", signif(m_las$bestTune$lambda, 3)),
-                  paste("alpha =", m_enet$bestTune$alpha, ", lambda =", signif(m_enet$bestTune$lambda, 3)),
-                  paste("k =", m_knn$bestTune$k),
-                  paste("mtry =", m_rf$bestTune$mtry, ", min.node.size =", m_rf$bestTune$min.node.size),
-                  paste("n.trees =", m_gbm$bestTune$n.trees, ", depth =", m_gbm$bestTune$interaction.depth),
-                  "laplace = 1"),
+  # Tuning plot for every model that tried more than one value
+  if (nrow(model$results) > 1) {
+    png(paste0("Outputs/ML_simple/figures/04_tuning_", tolower(name), ".png"),
+        width = 1600, height = 1000, res = 200)
+    print(plot(model, main = paste(gsub("_", " ", name), ": CV ROC AUC for each value tried")))
+    dev.off()
+  }
+}
 
-  # the best cross-validated ROC AUC is the one of the chosen values
-  Best_CV_ROC = c(max(m_dt$results$ROC), max(m_rda$results$ROC), max(m_las$results$ROC),
-                  max(m_enet$results$ROC), max(m_knn$results$ROC), max(m_rf$results$ROC),
-                  max(m_gbm$results$ROC), max(m_nb$results$ROC))
-)
-
-tuning$Best_CV_ROC <- round(tuning$Best_CV_ROC, 3)
 knitr::kable(tuning)
 write_csv(tuning, "Outputs/ML_simple/tuning_results.csv")
 
-# Tuning plots: cross-validated ROC AUC for every value that was tried
-png("Outputs/ML_simple/figures/04_tuning_random_forest.png", width = 1600, height = 1000, res = 200)
-print(plot(m_rf, main = "Random forest: CV ROC AUC by mtry and min.node.size"))
-dev.off()
-
-png("Outputs/ML_simple/figures/05_tuning_gbm.png", width = 1600, height = 1000, res = 200)
-print(plot(m_gbm, main = "GBM: CV ROC AUC by number of trees and tree depth"))
-dev.off()
-
-png("Outputs/ML_simple/figures/06_tuning_knn.png", width = 1600, height = 1000, res = 200)
-print(plot(m_knn, main = "KNN: CV ROC AUC by number of neighbours (k)"))
-dev.off()
-
-png("Outputs/ML_simple/figures/07_tuning_decision_tree.png", width = 1600, height = 1000, res = 200)
-print(plot(m_dt, main = "Decision tree: CV ROC AUC by complexity (cp)"))
-dev.off()
-
-png("Outputs/ML_simple/figures/08_tuning_elastic_net.png", width = 1600, height = 1000, res = 200)
-print(plot(m_enet, main = "Elastic net: CV ROC AUC by alpha and lambda"))
-dev.off()
-
 
 # -----------------------------------------------------------------------------
-# 13. Is the random forest really better? (DeLong test on the test set)
+# 10. Is the best model really better? (DeLong test on the test set)
 # -----------------------------------------------------------------------------
 # The DeLong test compares two ROC AUCs on the same test set.
 # p-value < 0.05 -> the difference is statistically significant.
 
-test_rf_gbm <- roc.test(roc_rf, roc_gbm, method = "delong")
-test_rf_lda <- roc.test(roc_rf, roc_lda, method = "delong")
-test_rf_las <- roc.test(roc_rf, roc_las, method = "delong")
-test_rf_log <- roc.test(roc_rf, roc_log, method = "delong")
-test_rf_knn <- roc.test(roc_rf, roc_knn, method = "delong")
+significance <- data.frame()
 
-significance <- data.frame(
-  Comparison = c("Random forest vs GBM", "Random forest vs LDA", "Random forest vs Lasso",
-                 "Random forest vs Logistic", "Random forest vs KNN"),
-  AUC_difference = c(auc(roc_rf) - auc(roc_gbm), auc(roc_rf) - auc(roc_lda),
-                     auc(roc_rf) - auc(roc_las), auc(roc_rf) - auc(roc_log),
-                     auc(roc_rf) - auc(roc_knn)),
-  p_value = c(test_rf_gbm$p.value, test_rf_lda$p.value, test_rf_las$p.value,
-              test_rf_log$p.value, test_rf_knn$p.value)
-)
-significance$AUC_difference <- round(significance$AUC_difference, 3)
-significance$p_value <- round(significance$p_value, 3)
+for (name in candidates$Model[-1]) {     # every model except the best one
+  delong <- roc.test(roc_list[[best]], roc_list[[name]], method = "delong")
+
+  significance <- rbind(significance, data.frame(
+    Comparison     = paste(gsub("_", " ", best), "vs", gsub("_", " ", name)),
+    AUC_difference = round(auc(roc_list[[best]]) - auc(roc_list[[name]]), 3),
+    p_value        = round(delong$p.value, 3)
+  ))
+}
 significance$Significant <- ifelse(significance$p_value < 0.05, "Yes", "No")
 
 knitr::kable(significance)
 write_csv(significance, "Outputs/ML_simple/significance_tests.csv")
 
-# 95% confidence interval of the random forest ROC AUC
-ci_rf <- ci.auc(roc_rf)
-cat("Random forest ROC AUC:", round(ci_rf[2], 3),
-    " 95% CI:", round(ci_rf[1], 3), "to", round(ci_rf[3], 3), "\n")
+# 95% confidence interval of the best model's ROC AUC
+ci_best <- ci.auc(roc_list[[best]])
+cat(best, "ROC AUC:", round(ci_best[2], 3),
+    " 95% CI:", round(ci_best[1], 3), "to", round(ci_best[3], 3), "\n")
 
 
 # -----------------------------------------------------------------------------
-# 14. Does the random forest work equally well for every group?
+# 11. Does the best model work equally well for every group?
 # -----------------------------------------------------------------------------
 female <- test$sex == "Female"
 male   <- test$sex == "Male"
 urban  <- test$residence == "Urban"
 rural  <- test$residence == "Rural"
 
-con_female <- confusionMatrix(pred_rf[female], actual[female], positive = "Unemployed")
-con_male   <- confusionMatrix(pred_rf[male],   actual[male],   positive = "Unemployed")
-con_urban  <- confusionMatrix(pred_rf[urban],  actual[urban],  positive = "Unemployed")
-con_rural  <- confusionMatrix(pred_rf[rural],  actual[rural],  positive = "Unemployed")
+con_female <- confusionMatrix(best_pred[female], actual[female], positive = "Unemployed")
+con_male   <- confusionMatrix(best_pred[male],   actual[male],   positive = "Unemployed")
+con_urban  <- confusionMatrix(best_pred[urban],  actual[urban],  positive = "Unemployed")
+con_rural  <- confusionMatrix(best_pred[rural],  actual[rural],  positive = "Unemployed")
 
-roc_female <- roc(actual[female], prob_rf[female], levels = c("Employed", "Unemployed"), direction = "<")
-roc_male   <- roc(actual[male],   prob_rf[male],   levels = c("Employed", "Unemployed"), direction = "<")
-roc_urban  <- roc(actual[urban],  prob_rf[urban],  levels = c("Employed", "Unemployed"), direction = "<")
-roc_rural  <- roc(actual[rural],  prob_rf[rural],  levels = c("Employed", "Unemployed"), direction = "<")
+roc_female <- roc(actual[female], best_prob[female], levels = c("Employed", "Unemployed"), direction = "<")
+roc_male   <- roc(actual[male],   best_prob[male],   levels = c("Employed", "Unemployed"), direction = "<")
+roc_urban  <- roc(actual[urban],  best_prob[urban],  levels = c("Employed", "Unemployed"), direction = "<")
+roc_rural  <- roc(actual[rural],  best_prob[rural],  levels = c("Employed", "Unemployed"), direction = "<")
 
 subgroups <- data.frame(
   Group = c("Female", "Male", "Urban", "Rural"),
@@ -440,24 +399,21 @@ subgroups <- data.frame(
   Specificity = c(con_female$byClass["Specificity"], con_male$byClass["Specificity"],
                   con_urban$byClass["Specificity"], con_rural$byClass["Specificity"])
 )
-subgroups$Unemployment_rate <- round(subgroups$Unemployment_rate, 3)
-subgroups$ROC_AUC     <- round(subgroups$ROC_AUC, 3)
-subgroups$Recall      <- round(subgroups$Recall, 3)
-subgroups$Specificity <- round(subgroups$Specificity, 3)
+subgroups <- subgroups %>% mutate(across(where(is.numeric) & !Youth_in_test, ~ round(.x, 3)))
 
 knitr::kable(subgroups)
 write_csv(subgroups, "Outputs/ML_simple/subgroup_performance.csv")
 
 
 # -----------------------------------------------------------------------------
-# 15. Direction of the effects (does a variable RAISE or LOWER the risk?)
+# 12. Direction of the effects (does a variable RAISE or LOWER the risk?)
 # -----------------------------------------------------------------------------
 # Feature importance only says WHICH variables matter. To see HOW they matter
 # we use two tools:
 #   a) odds ratios from the logistic regression (easy to read: above 1 raises
 #      the risk, below 1 lowers it). Training on down-sampled data changes only
 #      the intercept, not the odds ratios.
-#   b) partial dependence plots from the random forest: the average risk score
+#   b) partial dependence plots from the best model: the average risk score
 #      when we change one variable and keep everything else as it is.
 
 # a) Odds ratios -------------------------------------------------------------
@@ -502,7 +458,7 @@ or_plot <- ggplot(or_plot_data, aes(x = Odds_ratio, y = reorder(Term, Odds_ratio
 or_plot
 ggsave("Outputs/ML_simple/figures/09_odds_ratios.png", or_plot, width = 9, height = 7, dpi = 200)
 
-# b) Partial dependence (random forest) ---------------------------------------
+# b) Partial dependence (best model) ---------------------------------------
 library(pdp)
 
 # A random sample of 2,000 training youth keeps the computation fast
@@ -510,17 +466,17 @@ set.seed(123)
 pdp_rows <- sample(nrow(train), 2000)
 pdp_data <- train[pdp_rows, names(train) != "employment_status"]
 
-pd_school <- partial(m_rf, pred.var = "years_of_schooling", train = pdp_data,
+pd_school <- partial(best_model, pred.var = "years_of_schooling", train = pdp_data,
                      prob = TRUE, which.class = "Unemployed")
-pd_age    <- partial(m_rf, pred.var = "age", train = pdp_data,
+pd_age    <- partial(best_model, pred.var = "age", train = pdp_data,
                      prob = TRUE, which.class = "Unemployed")
-pd_hhsize <- partial(m_rf, pred.var = "household_size", train = pdp_data,
+pd_hhsize <- partial(best_model, pred.var = "household_size", train = pdp_data,
                      prob = TRUE, which.class = "Unemployed")
-pd_sex    <- partial(m_rf, pred.var = "sex", train = pdp_data,
+pd_sex    <- partial(best_model, pred.var = "sex", train = pdp_data,
                      prob = TRUE, which.class = "Unemployed")
-pd_edu    <- partial(m_rf, pred.var = "education_level", train = pdp_data,
+pd_edu    <- partial(best_model, pred.var = "education_level", train = pdp_data,
                      prob = TRUE, which.class = "Unemployed")
-pd_rel    <- partial(m_rf, pred.var = "household_relationship", train = pdp_data,
+pd_rel    <- partial(best_model, pred.var = "household_relationship", train = pdp_data,
                      prob = TRUE, which.class = "Unemployed")
 
 # Put the education levels in their natural order (not alphabetical)
